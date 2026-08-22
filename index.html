@@ -58,7 +58,6 @@
         --etiqueta-fondo: rgb(0 96 168 / 0.08);
         --etiqueta-texto: var(--brand-700);
         --etiqueta-borde: rgb(0 96 168 / 0.18);
-        --logo-base: transparent;
 
         --fuente:
           ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
@@ -93,10 +92,6 @@
           --etiqueta-fondo: rgb(255 255 255 / 0.09);
           --etiqueta-texto: var(--brand-200);
           --etiqueta-borde: rgb(255 255 255 / 0.14);
-          /* El logo oficial solo existe en versión para fondo claro (letras
-             negras y grises), así que en modo oscuro se dibuja sobre una base
-             blanca —el mismo recurso que usa la web. */
-          --logo-base: #fff;
         }
       }
 
@@ -162,16 +157,16 @@
         box-shadow: var(--sombra);
       }
 
+      /* El envoltorio del logo no debe añadir la línea base del texto que
+         trae un elemento en línea, o la pastilla queda descuadrada. */
+      .pastilla picture {
+        display: flex;
+      }
+
       .logo {
         display: block;
         width: 8.5rem;
         height: auto;
-        /* El relleno solo se nota en modo oscuro, donde `--logo-base` es
-           blanco: deja aire alrededor de las letras para que la base se lea
-           como una placa y no como un recorte. */
-        padding: 0.25rem 0.5rem;
-        border-radius: 10px;
-        background: var(--logo-base);
       }
 
       .pastilla-nota {
@@ -500,13 +495,20 @@
   <body>
     <header class="cabecera">
       <div class="pastilla">
-        <img
-          class="logo"
-          src="assets/logo.png"
-          width="1600"
-          height="839"
-          alt="B&amp;S Logistics S.A.S."
-        />
+        <!-- Dos versiones del mismo logo, una por tema: la blanca se dibuja
+             sobre el azul oscuro y la de color sobre el fondo claro. El
+             navegador elige sola y no hace falta JavaScript. Ambas son PNG
+             con fondo transparente, así que ninguna necesita placa detrás. -->
+        <picture>
+          <source srcset="assets/logo-navbarW.png" media="(prefers-color-scheme: dark)" />
+          <img
+            class="logo"
+            src="assets/logo.png"
+            width="1600"
+            height="839"
+            alt="B&amp;S Logistics S.A.S."
+          />
+        </picture>
         <span class="pastilla-nota">Herramientas internas</span>
       </div>
     </header>
