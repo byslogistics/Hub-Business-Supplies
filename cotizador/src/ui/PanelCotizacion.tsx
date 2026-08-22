@@ -81,7 +81,8 @@ export function DatosCliente({
 /**
  * Tratamientos de IVA de uso corriente. El valor es la fracción que se guarda
  * en la cotización; `null` significa «otra tarifa», que abre el campo libre
- * para vender desde otro país o aplicar un régimen distinto.
+ * para un régimen distinto. Sólo cambia el impuesto: la cotización se emite
+ * siempre en pesos colombianos.
  */
 const TRATAMIENTOS: readonly { clave: string; texto: string; tarifa: number | null }[] = [
   { clave: 'nacional', texto: 'Venta nacional · IVA 19%', tarifa: 0.19 },

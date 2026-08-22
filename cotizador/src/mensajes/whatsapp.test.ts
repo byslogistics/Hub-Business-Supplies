@@ -75,6 +75,10 @@ describe('mensajeWhatsapp', () => {
     expect(mensaje).not.toContain('📧 Email:');
     expect(mensaje).toContain('📍 Ciudad: Bogotá');
   });
+
+  it('declara la moneda: el «$» a secas no distingue peso de dólar', () => {
+    expect(mensaje).toContain('pesos colombianos (COP)');
+  });
 });
 
 describe('numeroColombiano', () => {

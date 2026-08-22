@@ -8,7 +8,7 @@
  */
 
 import { EMPRESA } from '../datos/empresa';
-import { fechaCorta, pesos, sumarDias, unidades } from '../dominio/formato';
+import { fechaCorta, MONEDA_DECLARADA, pesos, sumarDias, unidades } from '../dominio/formato';
 import { totalesDeCotizacion, totalesDeLinea } from '../dominio/precios';
 import type { Cotizacion } from '../dominio/tipos';
 
@@ -77,6 +77,10 @@ export function mensajeWhatsapp(cotizacion: Cotizacion, iva: number): string {
         `(hasta el ${fechaCorta(sumarDias(cotizacion.fecha, condiciones.validezDias))})`,
       `💳 Forma de pago: ${condiciones.formaPago}`,
       ...(condiciones.observaciones.trim() ? ['', `📝 ${condiciones.observaciones.trim()}`] : []),
+      '',
+      // La misma declaración que lleva el PDF: el «$» del mensaje es tan
+      // ambiguo como el del documento, y aquí se lee incluso más deprisa.
+      `💵 ${MONEDA_DECLARADA}`,
       SEPARADOR,
     ].join('\n'),
   );

@@ -30,14 +30,30 @@ const FECHA_LARGA = new Intl.DateTimeFormat('es-CO', {
   year: 'numeric',
 });
 
+/**
+ * La moneda, dicha con todas las letras.
+ *
+ * Todo lo que cotiza esta empresa va en pesos colombianos: no hay catálogo ni
+ * tarifa en otra moneda. Aun así los documentos que salen al cliente lo
+ * declaran, porque el «$» que imprime `pesos()` lo comparten el peso y el
+ * dólar —y la empresa atiende también Panamá—, y en las celdas de la tabla del
+ * PDF el número va sin símbolo ninguno.
+ *
+ * Vive aquí, junto a los formateadores, para que el PDF y el mensaje de
+ * WhatsApp digan exactamente lo mismo.
+ */
+export const MONEDA_DECLARADA =
+  'Todas las cifras están expresadas en pesos colombianos (COP).';
+
 /** "$ 1.250" — para pantalla. */
 export function pesos(valor: number): string {
   return MONEDA.format(valor).replace(/\s/g, ' ');
 }
 
 /**
- * "1.250" — para las tablas del PDF, donde el símbolo va en el encabezado de
- * la columna y repetirlo en cada celda sólo añade ruido.
+ * "1.250" — para las tablas del PDF, donde repetir el símbolo en cada celda
+ * sólo añadiría ruido. La moneda la declara `MONEDA_DECLARADA` bajo la tabla,
+ * una vez y para todas las cifras del documento.
  */
 export function pesosSinSimbolo(valor: number): string {
   return MONEDA_SIN_SIMBOLO.format(valor);
