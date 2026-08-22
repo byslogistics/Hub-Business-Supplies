@@ -128,8 +128,9 @@ export interface Cotizacion {
    * el cliente ya tenía en la mano decía un total y la pantalla otro. Con la
    * tarifa dentro del documento, lo emitido se queda como se emitió.
    *
-   * También es lo que permite cotizar una exportación (0 %) o vender desde
-   * otro país sin tocar el catálogo.
+   * También es lo que permite cotizar una exportación (0 %) sin tocar el
+   * catálogo. La moneda no entra en esto: se cotiza en pesos colombianos y
+   * nada más, así que no hay tarifa que dependa de dónde se venda.
    */
   iva: number;
   /**

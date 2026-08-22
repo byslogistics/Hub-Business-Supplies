@@ -12,7 +12,14 @@ import autoTable from 'jspdf-autotable';
 
 import { AGRADECIMIENTO } from '../datos/condiciones';
 import { EMPRESA } from '../datos/empresa';
-import { fechaLarga, pesos, pesosSinSimbolo, sumarDias, unidades } from '../dominio/formato';
+import {
+  fechaLarga,
+  MONEDA_DECLARADA,
+  pesos,
+  pesosSinSimbolo,
+  sumarDias,
+  unidades,
+} from '../dominio/formato';
 import { totalesDeCotizacion, totalesDeLinea } from '../dominio/precios';
 import type { Cotizacion } from '../dominio/tipos';
 import { campo, escribir, panel, regla, relleno, rotulo, tinta } from './documento';
@@ -375,6 +382,15 @@ function bloqueTotales(
   // primero busca quien recibe la oferta.
   escribir(doc, `${unidades(totales.unidades)} unidades en total`, HOJA.margen, yActual + 5, {
     tamano: 8.5,
+    color: COLOR.textoSuave,
+  });
+
+  // La moneda se dice, no se deduce. Un «$» a secas es ambiguo —la empresa
+  // atiende también Panamá, y el peso y el dólar comparten símbolo—, y en las
+  // celdas de la tabla ni siquiera aparece: el número va solo. Quien recibe
+  // una oferta no tiene por qué averiguar en qué moneda está.
+  escribir(doc, MONEDA_DECLARADA, HOJA.margen, yActual + 10, {
+    tamano: 7.5,
     color: COLOR.textoSuave,
   });
 

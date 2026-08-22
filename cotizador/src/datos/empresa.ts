@@ -12,8 +12,9 @@
 
 export const EMPRESA = {
   /**
-   * El logo y el sitio dicen S.A.S.; las cotizaciones viejas del Excel dicen
-   * LTDA. Se toma la del sitio, que es la forma vigente.
+   * Confirmado por la empresa: la razón social vigente es S.A.S. El `LTDA.`
+   * que aparece en las hojas viejas del Excel es la forma anterior y no debe
+   * volver a ningún documento que salga de aquí.
    */
   razonSocial: 'BUSINESS & SUPPLIES LOGISTICS S.A.S.',
   nombreComercial: 'B&S Logistics',

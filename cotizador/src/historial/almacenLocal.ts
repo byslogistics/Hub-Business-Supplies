@@ -17,6 +17,7 @@
  */
 
 import {
+  mismoCliente,
   POR_PAGINA,
   type CotizacionGuardada,
   type Estado,
@@ -101,6 +102,24 @@ export const almacenLocal: Almacen = {
     const emitidaEn = new Date().toISOString();
     const totales = totalesDeCotizacion(cotizacion.lineas, cotizacion.iva);
     const previa = guardadas[numero];
+
+    // La misma guarda que el Worker: un número escrito a mano no se lleva por
+    // delante la cotización de otro cliente. Reemitir la propia —el PDF y
+    // luego el WhatsApp— sigue actualizando la que ya está.
+    if (
+      cotizacion.numero &&
+      previa &&
+      !mismoCliente(
+        { empresa: previa.cliente, nit: previa.nit },
+        { empresa: cotizacion.cliente?.empresa ?? '', nit: cotizacion.cliente?.nit ?? '' },
+      )
+    ) {
+      throw new FalloHistorial(
+        'numero-ocupado',
+        `El número ${numero} ya es de una cotización${previa.cliente ? ` de ${previa.cliente}` : ''}. ` +
+          'Verifique el número, o deje el campo vacío para que se asigne el siguiente.',
+      );
+    }
 
     guardadas[numero] = {
       numero,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatoNumero } from '../../../compartido/historial';
+import { formatoNumero, mismoCliente } from '../../../compartido/historial';
 import { urlDelListado } from './almacen';
 
 describe('urlDelListado', () => {
@@ -62,5 +62,53 @@ describe('formatoNumero', () => {
     // con el mismo número, que es justo lo que el consecutivo central existe
     // para impedir.
     expect(formatoNumero('2026', 12345)).toBe('COT-2026-12345');
+  });
+});
+
+describe('mismoCliente', () => {
+  it('manda el NIT cuando los dos lo traen', () => {
+    // Corregir el nombre antes de reemitir no puede tomarse por un choque de
+    // números: lo que identifica a la empresa es el NIT.
+    expect(
+      mismoCliente(
+        { empresa: 'Coordinadora Mercantil S.A.', nit: '800.155.005-1' },
+        { empresa: 'COORDINADORA MERCANTIL S.A.S.', nit: '800155005-1' },
+      ),
+    ).toBe(true);
+  });
+
+  it('con NIT distinto son distintos por mucho que se llamen igual', () => {
+    expect(
+      mismoCliente(
+        { empresa: 'Transportes del Norte', nit: '900.111.222-3' },
+        { empresa: 'Transportes del Norte', nit: '901.999.888-7' },
+      ),
+    ).toBe(false);
+  });
+
+  it('sin NIT compara el nombre sin tildes ni mayúsculas', () => {
+    expect(
+      mismoCliente(
+        { empresa: '  Logística del Caribe ', nit: '' },
+        { empresa: 'LOGISTICA DEL CARIBE', nit: '' },
+      ),
+    ).toBe(true);
+    expect(mismoCliente({ empresa: 'Uno', nit: '' }, { empresa: 'Otro', nit: '' })).toBe(false);
+  });
+
+  it('cae al nombre cuando sólo uno de los dos trae NIT', () => {
+    // Pasa de verdad: la cotización vieja del Excel no siempre traía NIT.
+    expect(
+      mismoCliente(
+        { empresa: 'Coordinadora Mercantil S.A.', nit: '' },
+        { empresa: 'Coordinadora Mercantil S.A.', nit: '800.155.005-1' },
+      ),
+    ).toBe(true);
+  });
+
+  it('dos cotizaciones sin cliente son la misma, no un choque', () => {
+    // Un borrador sin datos de cliente que se baja en PDF y luego se manda por
+    // WhatsApp: son una cotización. Rechazar la segunda salida sería absurdo.
+    expect(mismoCliente({ empresa: '', nit: '' }, { empresa: '', nit: '' })).toBe(true);
   });
 });

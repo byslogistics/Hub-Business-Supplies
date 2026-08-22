@@ -62,6 +62,13 @@ depende de quién emita primero. Por eso la pantalla dice «se asigna al emitir�
 en vez de enseñar un número que podría cambiar delante de quien lo está
 leyendo.
 
+El campo sigue siendo editable, porque hay un caso real que lo necesita: pasar
+al historial una cotización vieja del Excel con el número que tuvo entonces. Lo
+que ya no se puede es pisar con él una cotización ajena. Si el número escrito
+ya es de otro cliente, el historial lo rechaza y dice de quién es; si es del
+mismo, se actualiza como siempre —bajar el PDF y mandar después el WhatsApp es
+una cotización, no dos.
+
 ### Sin conexión no se emite
 
 Armar la cotización sigue funcionando entero en el navegador —el catálogo, los
@@ -79,7 +86,7 @@ dos cotizaciones distintas con el mismo número, no.
 
 ```bash
 npm run instalar     # dependencias del hub y del cotizador
-npm test             # 54 pruebas del cotizador
+npm test             # 75 pruebas del cotizador
 npm run build        # deja el sitio entero en publico/
 ```
 
@@ -182,7 +189,7 @@ datos sólo los ve el equipo, que es para quien están.
 Mientras no haya nada en Cloudflare, cada empuje a `main` publica una versión
 **de muestra** en GitHub Pages:
 
-**https://richardlovelove.github.io/Hub-Business-Supplies/**
+**https://byslogistics.github.io/Hub-Business-Supplies/**
 
 Sirve para enseñar cómo va quedando —la portada, el cotizador, el PDF, la
 pantalla de historial— sin tener que montar antes la base de datos ni Access.

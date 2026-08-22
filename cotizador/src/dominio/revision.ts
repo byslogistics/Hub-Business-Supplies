@@ -25,7 +25,15 @@ export type Alerta =
   /** La cantidad no llega al mínimo publicado. */
   | { readonly tipo: 'bajo-minimo'; readonly minimo: number };
 
-/** Una alerta bloquea el envío hasta que alguien la mire. */
+/**
+ * Una alerta que merece la franja de aviso al principio del formulario.
+ *
+ * Avisa, no bloquea: los botones de emitir siguen habilitados a propósito.
+ * Que el listado haya cambiado no significa que la oferta esté mal —puede
+ * haberse pactado el precio viejo—, y una herramienta que impide enviar
+ * acabaría usándose por fuera. La decisión sigue siendo del asesor; lo que no
+ * puede es tomarla sin enterarse.
+ */
 export function esGrave(alerta: Alerta): boolean {
   return alerta.tipo === 'referencia-desconocida' || alerta.tipo === 'precio-desactualizado';
 }

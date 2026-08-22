@@ -81,6 +81,45 @@ export function formatoNumero(anio: string, valor: number): string {
   return `COT-${anio}-${String(valor).padStart(4, '0')}`;
 }
 
+/** Lo mínimo para saber a quién va una cotización. */
+export interface ClienteIdentificable {
+  empresa: string;
+  nit: string;
+}
+
+/**
+ * Si dos cotizaciones van al mismo cliente.
+ *
+ * Es lo que separa reemitir la propia —bajar el PDF y luego mandar el
+ * WhatsApp— de escribir a mano un número que ya es de otro. Vive en el
+ * contrato y no en cada lado porque las dos implementaciones del historial
+ * tienen que responder igual: si la vista previa dejara pasar lo que el
+ * servidor rechaza, la vista previa estaría enseñando algo que no va a pasar.
+ *
+ * Manda el NIT cuando los dos lo traen: es lo que identifica a una empresa, y
+ * así corregir una errata en el nombre antes de reemitir no se toma por un
+ * choque de números. Sin NIT sólo queda el nombre, comparado sin tildes ni
+ * mayúsculas.
+ */
+export function mismoCliente(a: ClienteIdentificable, b: ClienteIdentificable): boolean {
+  const nitA = soloDigitos(a.nit);
+  const nitB = soloDigitos(b.nit);
+  if (nitA && nitB) return nitA === nitB;
+  return sinTildes(a.empresa) === sinTildes(b.empresa);
+}
+
+function soloDigitos(valor: string): string {
+  return (valor ?? '').replace(/\D/g, '');
+}
+
+function sinTildes(valor: string): string {
+  return (valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 /**
  * Lo que el Worker devuelve cuando algo se rechaza.
  *

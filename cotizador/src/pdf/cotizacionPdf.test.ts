@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 
 import { construirPdf, nombreArchivo } from './cotizacionPdf';
@@ -64,6 +65,39 @@ function guardar(nombre: string, doc: ReturnType<typeof construirPdf>): void {
   writeFileSync(`${CARPETA}/${nombre}`, Buffer.from(doc.output('arraybuffer')));
 }
 
+/**
+ * El texto que el PDF lleva dentro.
+ *
+ * El documento se genera comprimido (`compress: true`), así que mirar los
+ * bytes a secas no encuentra nada: hay que desinflar cada `stream`. Cuesta
+ * quince líneas y a cambio las pruebas pueden afirmar qué dice el documento
+ * que recibe el cliente, y no sólo cuántas páginas ocupa.
+ */
+function textoDelPdf(doc: ReturnType<typeof construirPdf>): string {
+  const crudo = Buffer.from(doc.output('arraybuffer'));
+  const bytes = crudo.toString('latin1');
+  let texto = '';
+
+  const marca = /stream\r?\n/g;
+  let encontrado: RegExpExecArray | null;
+  while ((encontrado = marca.exec(bytes))) {
+    const inicio = encontrado.index + encontrado[0].length;
+    const fin = bytes.indexOf('endstream', inicio);
+    if (fin < 0) continue;
+    try {
+      texto += inflateSync(crudo.subarray(inicio, fin)).toString('latin1');
+    } catch {
+      // No todos los streams van comprimidos; los que no, se leen tal cual.
+      texto += bytes.slice(inicio, fin);
+    }
+  }
+
+  // Dentro del PDF los paréntesis delimitan las cadenas, así que los que
+  // forman parte del texto van escapados: «(COP)» se guarda como «\(COP\)».
+  // Se deshace para poder buscar lo que el documento dice de verdad.
+  return texto.replace(/\\([()])/g, '$1');
+}
+
 describe('construirPdf', () => {
   it('genera una sola página para una cotización corta', () => {
     const doc = construirPdf(
@@ -112,6 +146,21 @@ describe('construirPdf', () => {
 
   it('no falla con una cotización vacía', () => {
     expect(() => construirPdf(cotizacion([]))).not.toThrow();
+  });
+
+  it('declara la moneda y firma con la razón social vigente', () => {
+    const texto = textoDelPdf(
+      construirPdf(cotizacion([linea({ cantidad: 1000, unitario: 400 })])),
+    );
+
+    // Las celdas de la tabla van sin símbolo y el «$» de los totales lo
+    // comparten el peso y el dólar. Sin esta línea, la moneda se deduce.
+    expect(texto).toContain('pesos colombianos (COP)');
+
+    // Confirmado por la empresa: S.A.S., no LTDA. Lo segundo es la forma
+    // anterior y sale en las hojas viejas del Excel, no de aquí.
+    expect(texto).toContain('S.A.S.');
+    expect(texto).not.toContain('LTDA');
   });
 
   it('usa la tarifa de la cotización y no una global', () => {

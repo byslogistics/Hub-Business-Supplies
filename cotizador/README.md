@@ -119,7 +119,7 @@ La regla que ordena todo: **`dominio/` no sabe que existe React ni jsPDF**. Se
 puede probar sin navegador, y de hecho así se prueba.
 
 ```bash
-npm test                    # 54 pruebas
+npm test                    # 75 pruebas
 MUESTRA_PDF=1 npm test      # además deja PDFs de ejemplo en muestras/
 ```
 
@@ -135,8 +135,8 @@ cotizador saca los mismos totales al peso.
 sino que queda guardado en el documento al crearlo. Antes no era así, y eso
 significaba que un cambio de tarifa recalculaba todas las cotizaciones
 guardadas: el PDF que el cliente ya tenía en la mano decía un total y la
-pantalla otro. La misma pieza permite cotizar una exportación sin IVA o vender
-desde otro país, con el selector «Tratamiento de IVA».
+pantalla otro. La misma pieza permite cotizar una exportación sin IVA, con el
+selector «Tratamiento de IVA».
 
 **Una cotización guardada se revisa contra el listado vigente.** El caso real:
 se arma el lunes, el martes se regenera el catálogo porque un proveedor subió,
@@ -179,6 +179,21 @@ campo sigue siendo editable para un caso real —pasar al historial una
 cotización vieja del Excel, con su número de entonces—, y en ese caso se
 respeta el que se escriba.
 
+**Un número escrito a mano no pisa la cotización de otro.** Es la contrapartida
+de dejar el campo editable: teclear `COT-2026-0007` cuando ese número ya existe
+reemplazaba el documento del primer cliente por el del segundo, sin aviso y sin
+forma de recuperarlo. Ahora el historial mira de quién es el número antes de
+guardar. Mismo cliente —mismo NIT, o mismo nombre cuando no hay NIT— es la
+misma cotización y se actualiza como siempre, que es lo que hace falta para
+bajar el PDF y mandar el WhatsApp después. Cliente distinto se rechaza diciendo
+de quién es el número.
+
+**Todo va en pesos colombianos.** No hay catálogo ni tarifa en otra moneda. Aun
+así el PDF y el mensaje de WhatsApp lo declaran con todas las letras: el «$»
+del total lo comparten el peso y el dólar, la empresa atiende también Panamá, y
+en las celdas de la tabla el número va sin símbolo ninguno. Quien recibe una
+oferta no tiene por qué deducir en qué moneda está.
+
 **Emitir necesita conexión; armar, no.** El catálogo, los precios, el borrador
 y la vista previa del PDF siguen funcionando sin red. Emitir no, porque el
 número lo da el servidor. Dejar que el navegador se inventara uno provisional
@@ -207,10 +222,13 @@ Están en `src/datos/empresa.ts`, cruzando dos fuentes: el sitio
 byslogistics-web (teléfonos y correo comercial vigentes) y las hojas de
 cotización del Excel (NIT y dirección, que no están en el sitio).
 
-Dos cosas pendientes de confirmar con la empresa:
+**Razón social: `S.A.S.`**, confirmado por la empresa. El `LTDA.` que aparece
+en las hojas viejas del Excel es la forma anterior y no vuelve a ningún
+documento que salga de aquí; hay una prueba que lo comprueba sobre el PDF ya
+generado.
 
-- **Razón social.** El logo y el sitio dicen `S.A.S.`; las cotizaciones viejas
-  del Excel dicen `LTDA.`. Se usa `S.A.S.`.
+Queda una cosa pendiente de confirmar:
+
 - **Tarifa del clisé.** El listado tiene dos: `$55.000` fijo por diseño
   (fila 40) y `$2.300` por unidad (hoja `COTIZADOR`). Se cargó la de `$55.000`
   como servicio independiente.
