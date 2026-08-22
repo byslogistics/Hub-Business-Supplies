@@ -19,6 +19,7 @@
 
 import {
   formatoNumero,
+  mismoCliente,
   POR_PAGINA,
   type CotizacionGuardada,
   type ErrorApi,
@@ -129,6 +130,12 @@ async function registrar(
 ): Promise<{ numero: string; emitidaEn: string }> {
   const documento = await leerDocumento(peticion);
   const emitidaEn = new Date().toISOString();
+
+  // Con número dado hay que mirar antes si ese número ya es de alguien: el
+  // `ON CONFLICT` de abajo actualiza en silencio, y en silencio es justo como
+  // no se puede perder una cotización emitida.
+  if (numeroDado) await comprobarNumeroLibre(base, numeroDado, documento);
+
   const numero = numeroDado ?? (await siguienteNumero(base, documento.fecha));
 
   const totales = totalesDeCotizacion(documento.lineas, documento.iva);
@@ -171,6 +178,62 @@ async function registrar(
     .run();
 
   return { numero, emitidaEn };
+}
+
+/**
+ * Deja pasar el PUT sólo si ese número no es de otra cotización.
+ *
+ * El PUT cubre dos cosas que se parecen y no son la misma:
+ *
+ * 1. **Reemitir la propia.** El asesor baja el PDF y luego manda el WhatsApp.
+ *    Son una cotización, no dos, y la segunda salida debe actualizar la que ya
+ *    está guardada.
+ * 2. **Escribir un número a mano.** Pasar al historial una cotización vieja
+ *    del Excel, con el número que tuvo entonces.
+ *
+ * Lo segundo es lo que se puede equivocar: basta teclear `COT-2026-0007`
+ * cuando esa cotización ya existe para que el documento de otro cliente quede
+ * reemplazado por éste, sin aviso y sin forma de recuperarlo. El contrato ya
+ * tenía previsto el código `numero-ocupado` para esto; lo que faltaba era
+ * emitirlo.
+ *
+ * La cotización se reconoce por su cliente: mismo NIT —o mismo nombre, cuando
+ * no hay NIT— es la misma, y reemitirla sigue funcionando como antes. Cliente
+ * distinto es un choque, y se rechaza diciendo de quién es el número.
+ */
+async function comprobarNumeroLibre(
+  base: D1Database,
+  numero: string,
+  documento: Cotizacion,
+): Promise<void> {
+  const fila = await base
+    .prepare('SELECT cliente_empresa, cliente_nit FROM cotizaciones WHERE numero = ?')
+    .bind(numero)
+    .first<Record<string, unknown>>();
+
+  // Libre. Es el caso de la cotización vieja del Excel, que es legítimo.
+  if (!fila) return;
+
+  // Con el mismo cuidado que `aResumen`: lo que sale de la base se pasa por
+  // `String(... ?? '')` antes de tratarlo como texto.
+  const empresa = String(fila.cliente_empresa ?? '');
+
+  if (
+    mismoCliente(
+      { empresa, nit: String(fila.cliente_nit ?? '') },
+      { empresa: documento.cliente?.empresa ?? '', nit: documento.cliente?.nit ?? '' },
+    )
+  ) {
+    return;
+  }
+
+  const dueno = empresa.trim();
+  throw new ErrorPeticion(
+    409,
+    'numero-ocupado',
+    `El número ${numero} ya es de una cotización${dueno ? ` de ${dueno}` : ''}. ` +
+      'Verifique el número, o deje el campo vacío para que se asigne el siguiente.',
+  );
 }
 
 /**

@@ -172,6 +172,60 @@ describe('almacenLocal', () => {
     expect(fila).not.toHaveProperty('documento');
   });
 
+  it('un número escrito a mano no pisa la cotización de otro cliente', async () => {
+    // El caso: alguien pasa al historial una cotización vieja del Excel y
+    // teclea un número que ya está gastado. Antes el documento del primer
+    // cliente quedaba reemplazado por el del segundo, sin aviso.
+    const { numero } = await almacenLocal.registrar(cotizacion());
+
+    const deOtro = cotizacion({
+      numero,
+      cliente: {
+        empresa: 'Transportes del Norte',
+        nit: '900.111.222-3',
+        contacto: 'Luis Gómez',
+        telefono: '',
+        email: '',
+        ciudad: 'Medellín',
+      },
+    });
+
+    await expect(almacenLocal.registrar(deOtro)).rejects.toMatchObject({
+      codigo: 'numero-ocupado',
+    });
+
+    // Y la primera sigue entera.
+    expect((await almacenLocal.abrir(numero)).cliente).toBe('Coordinadora Mercantil S.A.');
+  });
+
+  it('reemitir la propia sigue pasando aunque le corrijan el nombre al cliente', async () => {
+    // Mismo NIT, nombre retocado. Es la misma cotización, no un choque: si
+    // esto se rechazara, corregir una errata costaría no poder reemitir.
+    const { numero } = await almacenLocal.registrar(cotizacion());
+
+    const corregida = cotizacion({
+      numero,
+      cliente: {
+        empresa: 'COORDINADORA MERCANTIL S.A.S.',
+        nit: '800.155.005-1',
+        contacto: 'Ana Ruiz',
+        telefono: '',
+        email: '',
+        ciudad: 'Bogotá',
+      },
+    });
+
+    await expect(almacenLocal.registrar(corregida)).resolves.toMatchObject({ numero });
+    expect((await almacenLocal.abrir(numero)).cliente).toBe('COORDINADORA MERCANTIL S.A.S.');
+  });
+
+  it('deja escribir a mano un número que todavía no existe', async () => {
+    // El caso legítimo que el campo editable existe para cubrir: rescatar del
+    // Excel una cotización de 2025 con el número que tuvo entonces.
+    const vieja = await almacenLocal.registrar(cotizacion({ numero: 'COT-2025-0413' }));
+    expect(vieja.numero).toBe('COT-2025-0413');
+  });
+
   it('avisa cuando se pide una cotización que no existe', async () => {
     await expect(almacenLocal.abrir('COT-DEMO-9999')).rejects.toBeInstanceOf(FalloHistorial);
     await expect(almacenLocal.marcar('COT-DEMO-9999', 'perdida', '')).rejects.toBeInstanceOf(
