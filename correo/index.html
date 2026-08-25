@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="es-CO">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Enviar correo comercial · Herramientas B&amp;S Logistics</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="../assets/logo.png" />
+
+    <style>
+      /* Misma paleta que la portada (index.html), para que se sienta la
+         misma herramienta y no una página aparte. */
+      :root {
+        --brand-50: #eff7fc;
+        --brand-100: #d7ecf8;
+        --brand-200: #aed8f0;
+        --brand-300: #79bce4;
+        --brand-500: #157cbf;
+        --brand-600: #0060a8;
+        --brand-700: #00518e;
+        --brand-900: #00335c;
+
+        --fondo: var(--brand-50);
+        --fondo-tarjeta: #fff;
+        --texto: #181818;
+        --texto-suave: #5b6875;
+        --texto-tenue: #8a949f;
+        --borde: rgb(0 96 168 / 0.14);
+        --borde-fuerte: rgb(0 96 168 / 0.4);
+        --sombra: 0 1px 2px rgb(0 32 58 / 0.06), 0 8px 24px -12px rgb(0 32 58 / 0.18);
+        --fuente:
+          ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+          'Noto Sans', sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fondo: #0a2a4d;
+          --fondo-tarjeta: rgb(255 255 255 / 0.06);
+          --texto: #f1f6fb;
+          --texto-suave: #b3c8dd;
+          --texto-tenue: #8ba3bc;
+          --borde: rgb(255 255 255 / 0.12);
+          --borde-fuerte: rgb(174 216 240 / 0.45);
+        }
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--fuente);
+        color: var(--texto);
+        background: var(--fondo);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a { color: var(--brand-600); }
+      @media (prefers-color-scheme: dark) {
+        a { color: var(--brand-300); }
+      }
+
+      header.cabecera {
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem 0;
+      }
+
+      .volver {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: var(--texto-suave);
+      }
+
+      main {
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem 4rem;
+      }
+
+      h1 {
+        font-size: clamp(1.6rem, 4vw, 2.1rem);
+        letter-spacing: -0.02em;
+        margin: 0.5rem 0 0.35rem;
+      }
+
+      .intro {
+        margin: 0 0 1.75rem;
+        color: var(--texto-suave);
+        max-width: 42rem;
+        line-height: 1.55;
+      }
+
+      .diseno {
+        display: grid;
+        grid-template-columns: minmax(20rem, 1fr) minmax(20rem, 1fr);
+        gap: 1.5rem;
+        align-items: start;
+      }
+
+      @media (max-width: 60rem) {
+        .diseno { grid-template-columns: 1fr; }
+      }
+
+      .panel {
+        background: var(--fondo-tarjeta);
+        border: 1px solid var(--borde);
+        border-radius: 16px;
+        box-shadow: var(--sombra);
+        padding: 1.5rem;
+      }
+
+      .panel h2 {
+        margin: 0 0 1rem;
+        font-size: 1.05rem;
+      }
+
+      .campo { margin-bottom: 1rem; }
+
+      .campo label {
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--texto-suave);
+        margin-bottom: 0.35rem;
+      }
+
+      .campo input,
+      .campo select,
+      .campo textarea {
+        width: 100%;
+        padding: 0.6rem 0.75rem;
+        border-radius: 10px;
+        border: 1px solid var(--borde-fuerte);
+        background: var(--fondo);
+        color: var(--texto);
+        font-family: inherit;
+        font-size: 0.9375rem;
+      }
+
+      .campo textarea {
+        min-height: 6rem;
+        resize: vertical;
+      }
+
+      .fila-dos {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+
+      @media (max-width: 30rem) {
+        .fila-dos { grid-template-columns: 1fr; }
+      }
+
+      .ayuda {
+        margin: -0.5rem 0 1.25rem;
+        font-size: 0.8125rem;
+        color: var(--texto-tenue);
+      }
+
+      button.enviar {
+        width: 100%;
+        padding: 0.85rem 1rem;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.enviar:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .estado {
+        margin-top: 0.9rem;
+        font-size: 0.875rem;
+        border-radius: 10px;
+        padding: 0.7rem 0.9rem;
+        display: none;
+      }
+
+      .estado.ok {
+        display: block;
+        background: rgb(20 160 90 / 0.12);
+        color: #0d7a45;
+      }
+
+      .estado.error {
+        display: block;
+        background: rgb(200 40 40 / 0.1);
+        color: #b8362b;
+      }
+
+      .previsualizacion {
+        position: sticky;
+        top: 1.5rem;
+      }
+
+      .previsualizacion iframe {
+        width: 100%;
+        height: 640px;
+        border: 1px solid var(--borde);
+        border-radius: 12px;
+        background: #fff;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="cabecera">
+      <a class="volver" href="../">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
+        </svg>
+        Centro de herramientas
+      </a>
+      <h1>Enviar correo comercial</h1>
+      <p class="intro">
+        Elige quién lo firma y qué plantilla usar, llena los datos del cliente y revisa la vista
+        previa a la derecha. Al darle «Enviar» sale de una vez, con la firma y el diseño de
+        B&amp;S Logistics ya puestos.
+      </p>
+    </header>
+
+    <main>
+      <div class="diseno">
+        <form class="panel" id="formulario" novalidate>
+          <h2>1. Quién firma y qué plantilla</h2>
+
+          <div class="fila-dos">
+            <div class="campo">
+              <label for="remitente">Firma como</label>
+              <select id="remitente" name="remitente"></select>
+            </div>
+            <div class="campo">
+              <label for="plantilla">Plantilla</label>
+              <select id="plantilla" name="plantilla"></select>
+            </div>
+          </div>
+          <p class="ayuda" id="descripcion-plantilla"></p>
+
+          <h2>2. Destinatario</h2>
+          <div class="campo">
+            <label for="destinatario">Correo del cliente</label>
+            <input type="email" id="destinatario" name="destinatario" required placeholder="cliente@empresa.com" />
+          </div>
+
+          <h2>3. Contenido</h2>
+          <div class="campo">
+            <label for="asunto">Asunto</label>
+            <input type="text" id="asunto" name="asunto" />
+            <p class="ayuda" style="margin-top:0.35rem;">
+              Se rellena solo según la plantilla; puedes cambiarlo si quieres.
+            </p>
+          </div>
+
+          <div id="campos-plantilla"></div>
+
+          <button class="enviar" type="submit" id="boton-enviar">Enviar correo</button>
+          <div class="estado" id="estado" role="status"></div>
+        </form>
+
+        <div class="panel previsualizacion">
+          <h2>Vista previa</h2>
+          <iframe id="vista" title="Vista previa del correo"></iframe>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      import { REMITENTES, PLANTILLAS, renderCorreo } from './plantillas.js';
+
+      const $remitente = document.getElementById('remitente');
+      const $plantilla = document.getElementById('plantilla');
+      const $descripcion = document.getElementById('descripcion-plantilla');
+      const $destinatario = document.getElementById('destinatario');
+      const $asunto = document.getElementById('asunto');
+      const $camposPlantilla = document.getElementById('campos-plantilla');
+      const $vista = document.getElementById('vista');
+      const $formulario = document.getElementById('formulario');
+      const $boton = document.getElementById('boton-enviar');
+      const $estado = document.getElementById('estado');
+
+      let asuntoTocadoAMano = false;
+
+      for (const r of Object.values(REMITENTES)) {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = r.nombre;
+        $remitente.appendChild(opt);
+      }
+
+      for (const p of Object.values(PLANTILLAS)) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nombre;
+        $plantilla.appendChild(opt);
+      }
+
+      function datosFormulario() {
+        const datos = {};
+        for (const input of $camposPlantilla.querySelectorAll('[data-campo]')) {
+          datos[input.dataset.campo] = input.value;
+        }
+        return datos;
+      }
+
+      function pintarCampos() {
+        const plantilla = PLANTILLAS[$plantilla.value];
+        $descripcion.textContent = plantilla.descripcion;
+        $camposPlantilla.innerHTML = '';
+
+        for (const c of plantilla.campos) {
+          const envoltorio = document.createElement('div');
+          envoltorio.className = 'campo';
+
+          const label = document.createElement('label');
+          label.textContent = c.etiqueta + (c.requerido ? ' *' : '');
+          label.setAttribute('for', 'campo-' + c.clave);
+
+          const input = document.createElement(c.tipo === 'textarea' ? 'textarea' : 'input');
+          input.id = 'campo-' + c.clave;
+          input.dataset.campo = c.clave;
+          if (c.tipo !== 'textarea') input.type = 'text';
+          if (c.requerido) input.required = true;
+          input.addEventListener('input', actualizarVista);
+
+          envoltorio.appendChild(label);
+          envoltorio.appendChild(input);
+          $camposPlantilla.appendChild(envoltorio);
+        }
+
+        asuntoTocadoAMano = false;
+        actualizarVista();
+      }
+
+      function actualizarVista() {
+        const plantilla = PLANTILLAS[$plantilla.value];
+        const datos = datosFormulario();
+
+        if (!asuntoTocadoAMano) $asunto.value = plantilla.asunto(datos);
+
+        try {
+          const { html } = renderCorreo($remitente.value, $plantilla.value, {
+            ...datos,
+            // La vista previa no exige los campos obligatorios todavía: se
+            // ve el correo tomando forma mientras se escribe.
+          });
+          $vista.srcdoc = html;
+        } catch {
+          // Falta algún campo obligatorio: no pasa nada, se actualiza cuando
+          // esté completo.
+        }
+      }
+
+      $remitente.addEventListener('change', actualizarVista);
+      $plantilla.addEventListener('change', pintarCampos);
+      $asunto.addEventListener('input', () => { asuntoTocadoAMano = true; });
+
+      pintarCampos();
+
+      $formulario.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        $estado.className = 'estado';
+        $estado.textContent = '';
+
+        if (!$formulario.reportValidity()) return;
+
+        $boton.disabled = true;
+        $boton.textContent = 'Enviando…';
+
+        try {
+          const respuesta = await fetch('/api/correo/enviar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              remitenteId: $remitente.value,
+              plantillaId: $plantilla.value,
+              destinatario: $destinatario.value.trim(),
+              asunto: $asunto.value.trim(),
+              datos: datosFormulario(),
+            }),
+          });
+
+          const cuerpo = await respuesta.json();
+
+          if (!respuesta.ok) {
+            throw new Error(cuerpo?.mensaje || 'No se pudo enviar el correo.');
+          }
+
+          $estado.className = 'estado ok';
+          $estado.textContent = `Correo enviado a ${$destinatario.value.trim()}.`;
+          $formulario.reset();
+          pintarCampos();
+        } catch (error) {
+          $estado.className = 'estado error';
+          $estado.textContent = error.message || 'No se pudo enviar el correo.';
+        } finally {
+          $boton.disabled = false;
+          $boton.textContent = 'Enviar correo';
+        }
+      });
+    </script>
+  </body>
+</html>
