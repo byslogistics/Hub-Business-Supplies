@@ -184,7 +184,7 @@ async function enviarCorreo(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `${generado.remitente.nombre} · B&S Logistics <${EMPRESA.correoVentas}>`,
+      from: `${generado.remitente.nombre} - B&S Logistics <${EMPRESA.correoVentas}>`,
       reply_to: generado.remitente.correoDirecto,
       to: [destinatario],
       subject: asuntoFinal,
