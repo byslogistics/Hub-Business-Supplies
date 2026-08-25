@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bys-hub",
+  "name": "hub-business-supplies",
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-01",
 
