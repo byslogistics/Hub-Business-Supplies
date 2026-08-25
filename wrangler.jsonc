@@ -4,10 +4,14 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-01",
 
-  // Sin subdominio `workers.dev`. Es deliberado: esa dirección no pasa por
-  // Cloudflare Access, así que dejarla encendida abriría una puerta lateral al
-  // historial. La única entrada es el dominio con Access delante.
-  "workers_dev": false,
+  // Encendido: por ahora no hay un dominio propio conectado a Cloudflare (el
+  // DNS de byslogistics.com.co se queda en GoDaddy), así que esta dirección
+  // -- hub-business-supplies.<cuenta>.workers.dev -- es la entrada real.
+  // La protección de Cloudflare Access se configura sobre el Worker mismo
+  // (pestaña «Access» del Worker en el panel), no sobre un dominio, así que
+  // cubre esta dirección igual que cubriría un dominio propio el día que
+  // se conecte uno.
+  "workers_dev": true,
 
   // La portada del hub y el cotizador ya construido. Cloudflare los sirve
   // directamente desde el borde; el Worker sólo se ejecuta para `/api/*`.
