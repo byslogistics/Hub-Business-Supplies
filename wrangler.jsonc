@@ -30,13 +30,12 @@
   ],
 
   "vars": {
-    // Los dos datos de la aplicación en Cloudflare Access. Se rellenan una vez
-    // creada; hasta entonces el Worker rechaza todo con «sin acceso», que es
-    // lo correcto: sin Access configurado no hay forma de saber quién entra.
+    // Los dos datos de la aplicación en Cloudflare Access, tomados de la
+    // pestaña «Access» del Worker en el panel de Cloudflare.
     // `ACCESO_DOMINIO` es el dominio del equipo (`algo.cloudflareaccess.com`)
     // y `ACCESO_AUD`, la etiqueta «Application Audience (AUD) Tag».
-    "ACCESO_DOMINIO": "",
-    "ACCESO_AUD": ""
+    "ACCESO_DOMINIO": "bold-tree-e82d.cloudflareaccess.com",
+    "ACCESO_AUD": "50a1016b6040d48f71f0f5a5ceab41fb1665d3fe08fb2a17a6a784049ae666c5"
   },
 
   "observability": {
