@@ -6,7 +6,7 @@
     <title>Herramientas · B&amp;S Logistics</title>
     <meta
       name="description"
-      content="Punto de entrada a las herramientas internas de Business & Supplies Logistics S.A.S.: página web, cotizador y CRM."
+      content="Punto de entrada a las herramientas internas de Business & Supplies Logistics S.A.S.: página web, cotizador, correo comercial y CRM."
     />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#0060a8" media="(prefers-color-scheme: light)" />
@@ -538,10 +538,10 @@
            también la etiqueta, el `target` y el texto para lectores de
            pantalla.
 
-           El cotizador es la única que NO lleva enlace externo: vive en este
-           mismo repositorio y se sirve desde este mismo dominio, en
-           `/cotizador/`. Por eso su tarjeta no abre pestaña nueva — no está
-           saliendo a ningún sitio.
+           El cotizador y el correo comercial son las únicas que NO llevan
+           enlace externo: viven en este mismo repositorio y se sirven desde
+           este mismo dominio. Por eso sus tarjetas no abren pestaña nueva —
+           no están saliendo a ningún sitio.
 
            ==================================================================== -->
       <ul class="herramientas">
@@ -652,6 +652,63 @@
             <span class="ir">
               Abrir
               <span class="solo-lectores">el cotizador</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </span>
+          </a>
+        </li>
+
+        <li>
+          <a class="tarjeta" href="./correo/">
+            <span class="tarjeta-top">
+              <span class="icono" aria-hidden="true">
+                <!-- Sobre -->
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="m3 7 9 6 9-6" />
+                </svg>
+              </span>
+              <span class="etiqueta">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.25"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 10.5 12 4l9 6.5" />
+                  <path d="M5 10v9h14v-9" />
+                </svg>
+                En el hub
+              </span>
+            </span>
+            <h2>Correo comercial</h2>
+            <p>
+              Elige quién firma y qué plantilla usar, llena los datos del cliente y envía el correo
+              ya diseñado con la firma de la empresa, sin salir del hub.
+            </p>
+            <span class="ir">
+              Abrir
+              <span class="solo-lectores">el envío de correo comercial</span>
               <svg
                 viewBox="0 0 24 24"
                 fill="none"

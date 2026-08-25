@@ -1,5 +1,5 @@
 /**
- * La API del historial de cotizaciones.
+ * La API del historial de cotizaciones y del correo comercial.
  *
  * Es la única parte del hub que necesita servidor. El resto —la portada, el
  * cotizador, el PDF— sigue ocurriendo entero en el navegador, y este Worker
@@ -13,8 +13,9 @@
  *    desde el navegador: el total del historial no puede discrepar del total
  *    del PDF que tiene el cliente.
  *
- * 2. **La identidad no se pide, se comprueba.** Quién emitió sale del token
- *    firmado de Cloudflare Access, nunca de un campo del cuerpo.
+ * 2. **La identidad no se pide, se comprueba.** Quién emitió —o quién manda
+ *    un correo— sale del token firmado de Cloudflare Access, nunca de un
+ *    campo del cuerpo.
  */
 
 import {
@@ -31,12 +32,16 @@ import {
 import { totalesDeCotizacion } from '../cotizador/src/dominio/precios';
 import type { Cotizacion } from '../cotizador/src/dominio/tipos';
 import { identificar, SinAcceso } from './acceso';
+import { EMPRESA, PLANTILLAS, REMITENTES, renderCorreo } from '../correo/plantillas.js';
 
 interface Env {
   BASE: D1Database;
   ASSETS: Fetcher;
   ACCESO_DOMINIO: string;
   ACCESO_AUD: string;
+  /** La llave de la cuenta de Resend de la empresa. Se pone con
+   *  `wrangler secret put RESEND_API_KEY` — nunca en `wrangler.jsonc`. */
+  RESEND_API_KEY: string;
   /** `desarrollo` salta la comprobación de Access. Nunca en producción. */
   MODO?: string;
   CORREO_DESARROLLO?: string;
@@ -50,8 +55,9 @@ export default {
     const url = new URL(peticion.url);
 
     if (!url.pathname.startsWith('/api/')) {
-      // La portada y el cotizador. `assets` los sirve directamente; esto sólo
-      // se ejecuta si la petición llegó igualmente hasta el Worker.
+      // La portada, el cotizador y el envío de correo. `assets` los sirve
+      // directamente; esto sólo se ejecuta si la petición llegó igualmente
+      // hasta el Worker.
       return env.ASSETS.fetch(peticion);
     }
 
@@ -68,7 +74,7 @@ export default {
         return fallo(error.http, error.codigo, error.message);
       }
       console.error(error);
-      return fallo(500, 'fallo', 'El historial falló. Vuelva a intentarlo.');
+      return fallo(500, 'fallo', 'La operación falló. Vuelva a intentarlo.');
     }
   },
 } satisfies ExportedHandler<Env>;
@@ -91,6 +97,10 @@ async function enrutar(
     return json({ correo });
   }
 
+  if (ruta === 'correo/enviar' && metodo === 'POST') {
+    return json(await enviarCorreo(peticion, env, correo));
+  }
+
   if (ruta === 'cotizaciones') {
     if (metodo === 'GET') return json(await listar(env.BASE, filtroDe(url)));
     if (metodo === 'POST') return json(await registrar(env.BASE, peticion, correo, null));
@@ -109,6 +119,87 @@ async function enrutar(
   }
 
   throw new ErrorPeticion(404, 'no-encontrada', 'Esa dirección no existe.');
+}
+
+// --- Correo comercial -------------------------------------------------------
+
+const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+
+interface PeticionCorreo {
+  remitenteId?: string;
+  plantillaId?: string;
+  destinatario?: string;
+  asunto?: string;
+  datos?: Record<string, string>;
+}
+
+/**
+ * Manda un correo comercial por Resend.
+ *
+ * El HTML nunca viene del navegador: se vuelve a generar aquí con
+ * `renderCorreo`, a partir sólo de los valores sueltos de los campos. Así una
+ * petición manipulada no puede meter en el correo de la empresa nada distinto
+ * a lo que las plantillas permiten.
+ *
+ * Quién lo envía —para dejar rastro en los registros de Resend— sale de
+ * `correo`, el mismo dato que ya comprobó `quienEs` con el token de Access;
+ * no se le pregunta a quien llama.
+ */
+async function enviarCorreo(
+  peticion: Request,
+  env: Env,
+  correo: string,
+): Promise<{ enviado: true; id: string }> {
+  const cuerpo = (await peticion.json().catch(() => null)) as PeticionCorreo | null;
+
+  if (!cuerpo || typeof cuerpo !== 'object') {
+    throw new ErrorPeticion(400, 'invalida', 'El cuerpo no es JSON válido.');
+  }
+
+  const { remitenteId, plantillaId, destinatario, asunto, datos } = cuerpo;
+
+  if (!remitenteId || !(remitenteId in REMITENTES)) {
+    throw new ErrorPeticion(400, 'invalida', 'Ese remitente no existe.');
+  }
+  if (!plantillaId || !(plantillaId in PLANTILLAS)) {
+    throw new ErrorPeticion(400, 'invalida', 'Esa plantilla no existe.');
+  }
+  if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario)) {
+    throw new ErrorPeticion(400, 'invalida', 'El correo del destinatario no es válido.');
+  }
+
+  let generado: ReturnType<typeof renderCorreo>;
+  try {
+    generado = renderCorreo(remitenteId, plantillaId, datos ?? {});
+  } catch (error) {
+    throw new ErrorPeticion(400, 'invalida', error instanceof Error ? error.message : 'Datos inválidos.');
+  }
+
+  const asuntoFinal = (asunto ?? '').trim() || generado.asunto;
+
+  const respuesta = await fetch(RESEND_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${generado.remitente.nombre} - B&S Logistics <${EMPRESA.correoVentas}>`,
+      reply_to: generado.remitente.correoDirecto,
+      to: [destinatario],
+      subject: asuntoFinal,
+      html: generado.html,
+    }),
+  });
+
+  if (!respuesta.ok) {
+    const detalle = await respuesta.text().catch(() => '');
+    console.error(`Resend respondió ${respuesta.status} al correo de ${correo}:`, detalle);
+    throw new ErrorPeticion(502, 'fallo', 'Resend no pudo enviar el correo. Vuelva a intentarlo.');
+  }
+
+  const { id } = (await respuesta.json()) as { id: string };
+  return { enviado: true, id };
 }
 
 // --- Registrar ------------------------------------------------------------

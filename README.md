@@ -7,20 +7,22 @@ y ve lo que necesita.
 ```
 /                 la portada con las tarjetas
 /cotizador/       el cotizador y el historial de cotizaciones
-/api/             el historial por dentro (sólo lo usa el cotizador)
+/correo/          el envío de correo comercial por Resend
+/api/             el historial y el correo por dentro (sólo los usan esas dos)
 ```
 
 ---
 
 ## Qué hay aquí y qué no
 
-| Herramienta       | Dónde vive                       |
-| ----------------- | -------------------------------- |
-| **Portada**       | Aquí: `index.html`               |
-| **Cotizador**     | Aquí: `cotizador/`               |
-| **Historial**     | Aquí: `worker/` + D1             |
-| **Página web**    | Fuera: `byslogistics-web`        |
-| **CRM · Chatbot** | Fuera: su propio Worker          |
+| Herramienta          | Dónde vive                       |
+| --------------------- | --------------------------------- |
+| **Portada**           | Aquí: `index.html`               |
+| **Cotizador**         | Aquí: `cotizador/`               |
+| **Historial**         | Aquí: `worker/` + D1             |
+| **Correo comercial**  | Aquí: `correo/` + `worker/` + Resend |
+| **Página web**        | Fuera: `byslogistics-web`        |
+| **CRM · Chatbot**     | Fuera: su propio Worker          |
 
 El cotizador **se mudó a este repositorio** con toda su historia de commits: el
 repo `Cotizador-Business-Supplies` ya no recibe cambios. Convendría archivarlo
@@ -82,6 +84,83 @@ dos cotizaciones distintas con el mismo número, no.
 
 ---
 
+## El correo comercial
+
+La pantalla en `/correo/` deja mandar un correo con el diseño y la firma de la
+empresa ya puestos, sin que quien lo envía tenga que entrar nunca a Resend ni
+escribir HTML.
+
+Quien manda elige **quién firma** (por ahora Paola Vargas o Yeimy Mahecha),
+**qué plantilla** usar (presentación comercial, seguimiento a una cotización u
+oferta puntual) y llena unos pocos campos —nombre del cliente, mensaje—. La
+pantalla de la izquierda pinta esos campos según la plantilla elegida; la de la
+derecha enseña una vista previa del correo, ya con el logo y la firma, mientras
+se escribe. Al darle «Enviar» se manda de una vez.
+
+**Todo lo editable vive en un solo archivo:** `correo/plantillas.js`. Ahí están
+los datos de cada vendedora (nombre, cargo, WhatsApp, a qué correo llegan las
+respuestas), los datos fijos de la empresa (teléfono, web, dirección, el logo)
+y las tres plantillas con sus campos y su texto. Añadir una vendedora nueva o
+una plantilla nueva es editar ese archivo — no hay que tocar la pantalla ni el
+Worker.
+
+Ese mismo archivo lo usan dos sitios, y por eso está en JavaScript llano, sin
+compilar: `correo/index.html` lo carga en el navegador para la vista previa, y
+`worker/index.ts` lo importa para generar el HTML de verdad que se manda. El
+correo que se ve en la vista previa es exactamente el que sale — no hay dos
+copias de la plantilla que se puedan desincronizar.
+
+**El HTML final siempre se genera en el servidor.** El formulario manda sólo
+los valores sueltos de los campos (el nombre del cliente, el mensaje…); es
+`worker/index.ts` quien vuelve a armar el correo completo con `renderCorreo`
+antes de mandarlo por Resend. Así una petición manipulada no puede meter en el
+correo de la empresa nada distinto de lo que las plantillas permiten, igual que
+el historial no confía en los totales que calcula el navegador.
+
+### Por qué Resend y no un botón que lo abra
+
+Resend no tiene una pantalla de «escribir y enviar» como Gmail — es un
+servicio pensado para que un programa mande el correo, o para campañas a una
+lista de contactos guardada. Un botón que simplemente abriera Resend habría
+dejado a quien vende en un panel técnico, sin ningún sitio cómodo para
+escribirle a un cliente puntual. Por eso la redacción ocurre aquí, en el hub —
+igual que el cotizador—, y Resend queda por detrás, como el motor que entrega
+el correo.
+
+### Cómo conectar la cuenta de Resend
+
+Esto es aparte de lo que instala `npm run instalar`: la cuenta de Resend es de
+la empresa, y conectarla es un trámite de una sola vez, a mano, igual que el
+resto de lo que pide la sección *Publicar* de abajo.
+
+1. **Verificar el dominio.** En el panel de Resend, **Domains → Add Domain**,
+   con `byslogistics.com.co`. Resend entrega unos registros (TXT, DKIM, y a
+   veces MX) que hay que agregar donde esté administrado ese dominio — el
+   panel de quien vendió el dominio, no Resend. Sin el dominio verificado,
+   Resend no deja enviar desde `ventas@byslogistics.com.co` — que es la
+   dirección que usan los correos de esta herramienta, con la respuesta
+   redirigida al buzón de quien firma (ver `correoDirecto` en
+   `correo/plantillas.js`).
+2. **Crear una llave.** **API Keys → Create API Key**, con permiso de envío
+   («Sending access» basta, no hace falta acceso total a la cuenta).
+3. **Guardarla como secreto del Worker**, nunca en el código ni en
+   `wrangler.jsonc`:
+
+   ```bash
+   npx wrangler secret put RESEND_API_KEY
+   ```
+
+   Pide la llave por consola y la guarda cifrada del lado de Cloudflare. Para
+   cambiarla más adelante, se repite el mismo comando.
+4. Para probar el envío en `npm run dev`, hace falta la misma llave en
+   `.dev.vars` (que no se versiona):
+
+   ```
+   RESEND_API_KEY=re_xxxxxxxxxxxxxxxx
+   ```
+
+---
+
 ## Puesta en marcha
 
 ```bash
@@ -93,7 +172,7 @@ npm run build        # deja el sitio entero en publico/
 Para trabajar en la pantalla, dos terminales:
 
 ```bash
-npm run dev          # el Worker y el historial, en :8787
+npm run dev          # el Worker, el historial y el correo, en :8787
 npm run pantalla     # el cotizador con recarga en caliente, en :5173
 ```
 
@@ -113,8 +192,8 @@ abierto a quien dé con la dirección.
 
 ## Publicar
 
-Falta hacer cuatro cosas a mano, una sola vez. Ninguna se puede automatizar
-desde aquí: todas piden la sesión de Cloudflare.
+Falta hacer cinco cosas a mano, una sola vez cada una. Ninguna se puede
+automatizar desde aquí: todas piden la sesión de Cloudflare o de Resend.
 
 ### 1. Crear la base de datos
 
@@ -149,14 +228,20 @@ el historial rechaza todo con «sin acceso», que es lo correcto: sin Access
 configurado no hay forma de saber quién está entrando.
 
 Access protege **el sitio entero**, no sólo el historial: la portada, el
-cotizador y las herramientas que se añadan mañana. Es la razón principal por la
-que el hub está en Cloudflare y no en otro sitio — el acceso se resuelve una
-vez, en la puerta, y no una vez por herramienta.
+cotizador, el correo y las herramientas que se añadan mañana. Es la razón
+principal por la que el hub está en Cloudflare y no en otro sitio — el acceso
+se resuelve una vez, en la puerta, y no una vez por herramienta.
 
 > Añadir a alguien al equipo es añadir su correo a esa política. No hay usuarios
 > ni contraseñas que gestionar aquí dentro.
 
-### 4. Desplegar
+### 4. Conectar Resend
+
+Ver la sección *El correo comercial* de arriba: verificar el dominio, crear
+una llave y guardarla con `npx wrangler secret put RESEND_API_KEY`. Sin esto,
+`/correo/` deja armar y previsualizar el correo, pero el envío falla.
+
+### 5. Desplegar
 
 ```bash
 npm run desplegar
@@ -212,10 +297,15 @@ no serviría de nada: el dato viajaría igual. Un complemento de Vite
 (`catalogoSinCostos`, en `cotizador/vite.config.ts`) los quita al construir. Los
 precios de venta sí van, porque sin ellos no habría nada que enseñar.
 
-Ninguna de las dos cosas llega a producción: el despliegue de Cloudflare no
-define `VITE_DEMO`, así que el almacén de mentira no entra en el paquete y el
-catálogo va completo. Es comprobable —`grep COT-DEMO publico/` después de un
-`npm run build` normal no encuentra nada.
+`/correo/` también se publica en esta vista previa, pero el botón «Enviar» va
+a fallar: la vista previa no tiene el secreto de Resend ni pasa por el Worker
+de verdad. Sirve igual para enseñar cómo quedan las plantillas y probar la
+vista previa en vivo.
+
+Ninguna de las dos cosas del historial llega a producción: el despliegue de
+Cloudflare no define `VITE_DEMO`, así que el almacén de mentira no entra en el
+paquete y el catálogo va completo. Es comprobable —`grep COT-DEMO publico/`
+después de un `npm run build` normal no encuentra nada.
 
 > Aun sin costos, la vista previa enseña los precios de venta a cualquiera con
 > el enlace. Conviene no repartirlo más allá de quien tenga que opinar, y
@@ -229,21 +319,22 @@ catálogo va completo. Es comprobable —`grep COT-DEMO publico/` después de un
 index.html        la portada: marcado y estilos en un solo archivo, sin construir
 assets/           el logo
 cotizador/        la aplicación del cotizador (React + Vite)
-worker/           la API del historial y la verificación de Access
-compartido/       el contrato entre los dos: qué viaja por el cable
+correo/           la pantalla de correo comercial y sus plantillas, sin construir
+worker/           la API del historial, del correo y la verificación de Access
+compartido/       el contrato entre el cotizador y el Worker: qué viaja por el cable
 migraciones/      el esquema de la base, en SQL
-scripts/          arma `publico/` a partir de la portada y del cotizador
+scripts/          arma `publico/` a partir de la portada, el correo y el cotizador
 .github/          el flujo que publica la vista previa
 ```
 
-La portada **no se construye**: es un `index.html` con los estilos dentro y sin
-dependencias. Se abre con doble clic y se ve igual que publicada, y añadir una
-herramienta es copiar un `<li>` y cambiarle cuatro cosas (está explicado dentro
-del propio archivo). Meterla en el empaquetador no ganaría nada y costaría esa
-propiedad.
+La portada y el correo **no se construyen**: son un `index.html` con los
+estilos dentro y sin dependencias. Se abren con doble clic y se ven igual que
+publicados, y añadir una herramienta a la portada es copiar un `<li>` y
+cambiarle cuatro cosas (está explicado dentro del propio archivo). Meterlos en
+el empaquetador no ganaría nada y costaría esa propiedad.
 
 El cotizador sí, porque es una aplicación de verdad. `npm run build` lo compila
-en `publico/cotizador/` y copia la portada al lado.
+en `publico/cotizador/` y copia la portada y el correo al lado.
 
 ### Cambiar de proveedor sin rehacer nada
 

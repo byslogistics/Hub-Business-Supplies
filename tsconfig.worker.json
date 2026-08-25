@@ -13,7 +13,8 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowJs": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["worker", "compartido"]
+  "include": ["worker", "compartido", "correo"]
 }
