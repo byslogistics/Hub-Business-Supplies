@@ -20,8 +20,7 @@
     {
       "binding": "BASE",
       "database_name": "bys-cotizaciones",
-      // Lo imprime `wrangler d1 create bys-cotizaciones`. Ver el README.
-      "database_id": "PENDIENTE",
+      "database_id": "5f1c9c97-8560-4318-b32f-e4eec568ea64",
       "migrations_dir": "migraciones"
     }
   ],
