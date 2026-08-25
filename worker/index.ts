@@ -32,7 +32,7 @@ import {
 import { totalesDeCotizacion } from '../cotizador/src/dominio/precios';
 import type { Cotizacion } from '../cotizador/src/dominio/tipos';
 import { identificar, SinAcceso } from './acceso';
-import { EMPRESA, PLANTILLAS, REMITENTES, renderCorreo } from '../correo/plantillas.js';
+import { EMPRESA, MAXIMO_ADJUNTOS_BYTES, PLANTILLAS, REMITENTES, renderCorreo } from '../correo/plantillas.js';
 
 interface Env {
   BASE: D1Database;
@@ -125,12 +125,22 @@ async function enrutar(
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 
+/** Ningún correo necesita más de esto para venderle a un cliente. */
+const MAXIMO_ADJUNTOS = 5;
+
+interface AdjuntoRecibido {
+  nombre?: string;
+  tipo?: string;
+  contenidoBase64?: string;
+}
+
 interface PeticionCorreo {
   remitenteId?: string;
   plantillaId?: string;
   destinatario?: string;
   asunto?: string;
   datos?: Record<string, string>;
+  adjuntos?: AdjuntoRecibido[];
 }
 
 /**
@@ -156,7 +166,7 @@ async function enviarCorreo(
     throw new ErrorPeticion(400, 'invalida', 'El cuerpo no es JSON válido.');
   }
 
-  const { remitenteId, plantillaId, destinatario, asunto, datos } = cuerpo;
+  const { remitenteId, plantillaId, destinatario, asunto, datos, adjuntos } = cuerpo;
 
   if (!remitenteId || !(remitenteId in REMITENTES)) {
     throw new ErrorPeticion(400, 'invalida', 'Ese remitente no existe.');
@@ -175,6 +185,11 @@ async function enviarCorreo(
     throw new ErrorPeticion(400, 'invalida', error instanceof Error ? error.message : 'Datos inválidos.');
   }
 
+  // El tamaño ya se comprobó en el navegador, pero eso es sólo para que la
+  // vendedora no espere el envío para enterarse — la comprobación que cuenta
+  // es esta, del lado del servidor.
+  const adjuntosValidados = validarAdjuntos(adjuntos);
+
   const asuntoFinal = (asunto ?? '').trim() || generado.asunto;
 
   const respuesta = await fetch(RESEND_ENDPOINT, {
@@ -189,6 +204,9 @@ async function enviarCorreo(
       to: [destinatario],
       subject: asuntoFinal,
       html: generado.html,
+      ...(adjuntosValidados.length > 0
+        ? { attachments: adjuntosValidados.map((a) => ({ filename: a.nombre, content: a.contenidoBase64 })) }
+        : {}),
     }),
   });
 
@@ -200,6 +218,52 @@ async function enviarCorreo(
 
   const { id } = (await respuesta.json()) as { id: string };
   return { enviado: true, id };
+}
+
+/**
+ * Revisa la cantidad y el peso de los adjuntos antes de mandarlos.
+ *
+ * `contenidoBase64` no se decodifica entero para pesarlo — de un texto en
+ * base64 el tamaño real se calcula con su longitud, sin necesidad de volverlo
+ * bytes primero.
+ */
+function validarAdjuntos(adjuntos: AdjuntoRecibido[] | undefined): { nombre: string; contenidoBase64: string }[] {
+  if (!adjuntos || adjuntos.length === 0) return [];
+
+  if (adjuntos.length > MAXIMO_ADJUNTOS) {
+    throw new ErrorPeticion(400, 'invalida', `No se pueden adjuntar más de ${MAXIMO_ADJUNTOS} archivos.`);
+  }
+
+  let pesoTotal = 0;
+  const validados: { nombre: string; contenidoBase64: string }[] = [];
+
+  for (const adjunto of adjuntos) {
+    const nombre = (adjunto?.nombre ?? '').trim();
+    const contenidoBase64 = (adjunto?.contenidoBase64 ?? '').trim();
+    if (!nombre || !contenidoBase64) {
+      throw new ErrorPeticion(400, 'invalida', 'Uno de los adjuntos llegó incompleto.');
+    }
+
+    pesoTotal += tamanoDeBase64(contenidoBase64);
+    if (pesoTotal > MAXIMO_ADJUNTOS_BYTES) {
+      throw new ErrorPeticion(
+        400,
+        'invalida',
+        `Los adjuntos pesan más de lo permitido (máximo ${Math.round(MAXIMO_ADJUNTOS_BYTES / (1024 * 1024))} MB en total).`,
+      );
+    }
+
+    validados.push({ nombre, contenidoBase64 });
+  }
+
+  return validados;
+}
+
+/** Bytes reales que representa un texto en base64, sin decodificarlo entero. */
+function tamanoDeBase64(base64: string): number {
+  const limpio = base64.replace(/[^A-Za-z0-9+/=]/g, '');
+  const relleno = limpio.endsWith('==') ? 2 : limpio.endsWith('=') ? 1 : 0;
+  return Math.floor((limpio.length * 3) / 4) - relleno;
 }
 
 // --- Registrar ------------------------------------------------------------
