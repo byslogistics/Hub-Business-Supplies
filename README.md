@@ -91,17 +91,37 @@ empresa ya puestos, sin que quien lo envía tenga que entrar nunca a Resend ni
 escribir HTML.
 
 Quien manda elige **quién firma** (por ahora Paola Vargas o Yeimy Mahecha),
-**qué plantilla** usar (presentación comercial, seguimiento a una cotización u
-oferta puntual) y llena unos pocos campos —nombre del cliente, mensaje—. La
-pantalla de la izquierda pinta esos campos según la plantilla elegida; la de la
-derecha enseña una vista previa del correo, ya con el logo y la firma, mientras
-se escribe. Al darle «Enviar» se manda de una vez.
+**qué plantilla** usar y llena unos pocos campos —nombre del cliente,
+mensaje—. Hay seis plantillas, cada una con su pastilla de categoría y su
+botón de llamada a la acción (al sitio web, al WhatsApp de quien firma, o
+ninguno cuando no aplica): presentación comercial, seguimiento a una
+cotización, oferta puntual, reactivar un cliente, agradecimiento de compra y
+recordatorio de pago.
+
+El mensaje libre no es texto plano a secas: una línea que empiece con `- ` se
+vuelve viñeta, `**así**` sale en negrita, `*así*` en cursiva, y un enlace
+suelto (`https://…`) queda subrayado y en azul. Sigue sin admitir HTML de
+verdad — todo se escapa primero y el formato se aplica después, así que nada
+de lo que alguien escriba puede colarse como una etiqueta.
+
+La pantalla de la izquierda pinta los campos según la plantilla elegida; la de
+la derecha enseña una vista previa grande del correo —con vista de escritorio
+o de celular, y un botón de pantalla completa—, que se actualiza en cada tecla
+sin esperar a que los campos obligatorios estén completos. Al darle «Enviar»
+se manda de una vez.
+
+**Se pueden adjuntar archivos.** El botón «Adjuntar archivo» deja pegar hasta
+cinco (por ejemplo, el PDF de una cotización ya descargada desde el
+Cotizador), con un tope de 8&nbsp;MB en total. El navegador los lee en base64
+y los manda junto con el resto del formulario; el Worker vuelve a comprobar la
+cantidad y el peso antes de pasarlos a Resend — el límite del navegador es
+sólo para avisar antes, no el que de verdad cuenta.
 
 **Todo lo editable vive en un solo archivo:** `correo/plantillas.js`. Ahí están
 los datos de cada vendedora (nombre, cargo, WhatsApp, a qué correo llegan las
 respuestas), los datos fijos de la empresa (teléfono, web, dirección, el logo)
-y las tres plantillas con sus campos y su texto. Añadir una vendedora nueva o
-una plantilla nueva es editar ese archivo — no hay que tocar la pantalla ni el
+y las plantillas con sus campos y su texto. Añadir una vendedora nueva o una
+plantilla nueva es editar ese archivo — no hay que tocar la pantalla ni el
 Worker.
 
 Ese mismo archivo lo usan dos sitios, y por eso está en JavaScript llano, sin
@@ -243,16 +263,25 @@ una llave y guardarla con `npx wrangler secret put RESEND_API_KEY`. Sin esto,
 
 ### 5. Desplegar
 
+El repositorio está conectado a **Cloudflare Workers Builds**: cada `git push`
+a `main` construye y publica solo, sin que nadie tenga que correr nada a mano.
+El proyecto en Cloudflare se llama **hub-business-supplies** (tiene que
+coincidir con `name` en `wrangler.jsonc`, o Cloudflare avisa del desacuerdo).
+
+Para desplegar a mano —por ejemplo, para probar algo sin esperar a Git—
+también sirve:
+
 ```bash
 npm run desplegar
 ```
 
-Construye `publico/` y lo sube junto con el Worker. El dominio se conecta en
-**Workers & Pages → bys-hub → Settings → Domains & Routes**.
+El dominio se conecta en **Workers & Pages → hub-business-supplies → Settings
+→ Domains & Routes**.
 
 Ojo: `wrangler.jsonc` lleva `workers_dev: false` a propósito. La dirección
-`bys-hub.<cuenta>.workers.dev` no pasa por Access, así que dejarla encendida
-abriría una puerta lateral al historial saltándose la lista de correos.
+`hub-business-supplies.<cuenta>.workers.dev` no pasa por Access, así que
+dejarla encendida abriría una puerta lateral al historial saltándose la lista
+de correos.
 
 ### Y una vez publicado
 
