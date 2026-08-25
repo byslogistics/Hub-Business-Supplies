@@ -3,11 +3,13 @@
  *
  *   publico/index.html      la portada del hub, copiada tal cual
  *   publico/assets/         su logo
+ *   publico/correo/         la pantalla de correo comercial, copiada tal cual
  *   publico/cotizador/      el cotizador ya construido
  *
- * La portada no se construye: es un `index.html` con los estilos dentro y sin
- * dependencias, y esa propiedad —abrirla con doble clic y verla igual que
- * publicada— vale más que meterla en el empaquetador para no ganar nada.
+ * La portada y el correo no se construyen: son `index.html` con los estilos
+ * dentro y sin dependencias, y esa propiedad —abrirlos con doble clic y verlos
+ * igual que publicados— vale más que meterlos en el empaquetador para no
+ * ganar nada.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -30,8 +32,8 @@ execFileSync(
   { cwd: raiz, stdio: 'inherit' },
 );
 
-console.log('· Copiando la portada…');
-for (const archivo of ['index.html', 'assets']) {
+console.log('· Copiando la portada y el correo…');
+for (const archivo of ['index.html', 'assets', 'correo']) {
   await cp(join(raiz, archivo), join(destino, archivo), { recursive: true });
 }
 
