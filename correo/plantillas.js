@@ -62,8 +62,8 @@ export const EMPRESA = {
 };
 
 const BRAND = {
-  700: '#00518e',
-  900: '#00335c',
+  azul700: '#00518e',
+  azul900: '#00335c',
   fondo: '#eff7fc',
 };
 
@@ -194,7 +194,7 @@ function envoltura(contenidoHtml, remitente) {
                 ${contenidoHtml}
                 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:8px;">
                   <tr>
-                    <td style="border-radius:999px;background:${BRAND.700};">
+                    <td style="border-radius:999px;background:${BRAND.azul700};">
                       <a href="${EMPRESA.sitioUrl}" style="display:inline-block;padding:11px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold;">
                         Visitar byslogistics.com.co
                       </a>
@@ -204,7 +204,7 @@ function envoltura(contenidoHtml, remitente) {
               </td>
             </tr>
             <tr>
-              <td style="background:${BRAND.900};padding:28px 32px;color:#ffffff;">
+              <td style="background:${BRAND.azul900};padding:28px 32px;color:#ffffff;">
                 <p style="margin:0 0 2px;font-size:17px;font-weight:bold;">${esc(remitente.nombre)}</p>
                 <p style="margin:0 0 14px;font-size:13px;font-style:italic;color:#cfe3f4;">${esc(remitente.cargo)}</p>
                 <p style="margin:0 0 4px;font-size:13px;color:#e7f1fa;">WhatsApp: ${esc(remitente.whatsapp)}</p>
