@@ -28,6 +28,7 @@
         --borde: rgb(0 96 168 / 0.14);
         --borde-fuerte: rgb(0 96 168 / 0.4);
         --sombra: 0 1px 2px rgb(0 32 58 / 0.06), 0 8px 24px -12px rgb(0 32 58 / 0.18);
+        --sombra-alta: 0 4px 8px rgb(0 32 58 / 0.1), 0 24px 48px -16px rgb(0 32 58 / 0.35);
         --fuente:
           ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
           'Noto Sans', sans-serif;
@@ -62,7 +63,7 @@
       }
 
       header.cabecera {
-        max-width: 72rem;
+        max-width: 84rem;
         margin: 0 auto;
         padding: 1.5rem 1.25rem 0;
       }
@@ -78,7 +79,7 @@
       }
 
       main {
-        max-width: 72rem;
+        max-width: 84rem;
         margin: 0 auto;
         padding: 1.5rem 1.25rem 4rem;
       }
@@ -92,18 +93,18 @@
       .intro {
         margin: 0 0 1.75rem;
         color: var(--texto-suave);
-        max-width: 42rem;
+        max-width: 46rem;
         line-height: 1.55;
       }
 
       .diseno {
         display: grid;
-        grid-template-columns: minmax(20rem, 1fr) minmax(20rem, 1fr);
+        grid-template-columns: minmax(20rem, 1fr) minmax(22rem, 1.25fr);
         gap: 1.5rem;
         align-items: start;
       }
 
-      @media (max-width: 60rem) {
+      @media (max-width: 64rem) {
         .diseno { grid-template-columns: 1fr; }
       }
 
@@ -116,9 +117,11 @@
       }
 
       .panel h2 {
-        margin: 0 0 1rem;
+        margin: 1.5rem 0 1rem;
         font-size: 1.05rem;
       }
+
+      .panel h2:first-child { margin-top: 0; }
 
       .campo { margin-bottom: 1rem; }
 
@@ -130,7 +133,8 @@
         margin-bottom: 0.35rem;
       }
 
-      .campo input,
+      .campo input[type='text'],
+      .campo input[type='email'],
       .campo select,
       .campo textarea {
         width: 100%;
@@ -164,8 +168,79 @@
         color: var(--texto-tenue);
       }
 
+      /* Adjuntos ----------------------------------------------------------- */
+
+      .zona-adjuntos {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.6rem;
+        padding: 1rem;
+        border: 1.5px dashed var(--borde-fuerte);
+        border-radius: 12px;
+        background: var(--fondo);
+      }
+
+      .boton-adjuntar {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid var(--borde-fuerte);
+        background: var(--fondo-tarjeta);
+        color: var(--texto);
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .lista-adjuntos {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .lista-adjuntos li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        background: var(--fondo-tarjeta);
+        border: 1px solid var(--borde);
+        font-size: 0.8125rem;
+      }
+
+      .lista-adjuntos .nombre {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .lista-adjuntos .tamano {
+        color: var(--texto-tenue);
+        white-space: nowrap;
+      }
+
+      .lista-adjuntos button {
+        border: none;
+        background: none;
+        color: #b8362b;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0.1rem 0.3rem;
+      }
+
       button.enviar {
         width: 100%;
+        margin-top: 0.5rem;
         padding: 0.85rem 1rem;
         border: none;
         border-radius: 999px;
@@ -201,17 +276,114 @@
         color: #b8362b;
       }
 
+      /* Vista previa --------------------------------------------------------- */
+
       .previsualizacion {
         position: sticky;
         top: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .previsualizacion-cabecera {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .previsualizacion-cabecera h2 {
+        margin: 0;
+      }
+
+      .controles-previa {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .segmentado {
+        display: inline-flex;
+        border: 1px solid var(--borde-fuerte);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .segmentado button {
+        border: none;
+        background: var(--fondo-tarjeta);
+        color: var(--texto-suave);
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .segmentado button.activo {
+        background: var(--brand-600);
+        color: #fff;
+      }
+
+      .boton-pantalla-completa {
+        border: 1px solid var(--borde-fuerte);
+        border-radius: 999px;
+        background: var(--fondo-tarjeta);
+        color: var(--texto-suave);
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .lienzo-previa {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        background: repeating-linear-gradient(
+          45deg,
+          var(--fondo),
+          var(--fondo) 10px,
+          var(--borde) 10px,
+          var(--borde) 11px
+        );
+        border-radius: 12px;
+        padding: 1rem;
+        overflow: auto;
       }
 
       .previsualizacion iframe {
-        width: 100%;
-        height: 640px;
+        width: 640px;
+        max-width: 100%;
+        height: min(76vh, 900px);
         border: 1px solid var(--borde);
-        border-radius: 12px;
+        border-radius: 10px;
         background: #fff;
+        transition: width 0.2s ease;
+      }
+
+      .previsualizacion[data-ancho='celular'] iframe {
+        width: 390px;
+      }
+
+      /* Pantalla completa: la tarjeta se despega y ocupa casi toda la ventana. */
+      .previsualizacion.completa {
+        position: fixed;
+        inset: 1rem;
+        top: 1rem;
+        z-index: 80;
+        box-shadow: var(--sombra-alta);
+        max-height: none;
+      }
+
+      .previsualizacion.completa .lienzo-previa {
+        max-height: none;
+      }
+
+      .previsualizacion.completa iframe {
+        height: calc(100vh - 10rem);
       }
     </style>
   </head>
@@ -226,9 +398,9 @@
       </a>
       <h1>Enviar correo comercial</h1>
       <p class="intro">
-        Elige quién lo firma y qué plantilla usar, llena los datos del cliente y revisa la vista
-        previa a la derecha. Al darle «Enviar» sale de una vez, con la firma y el diseño de
-        B&amp;S Logistics ya puestos.
+        Elige quién lo firma y qué plantilla usar, llena los datos del cliente, adjunta un archivo
+        si hace falta, y revisa la vista previa a la derecha. Al darle «Enviar» sale de una vez, con
+        la firma y el diseño de B&amp;S Logistics ya puestos.
       </p>
     </header>
 
@@ -266,19 +438,48 @@
 
           <div id="campos-plantilla"></div>
 
+          <h2>4. Adjuntos (opcional)</h2>
+          <div class="campo">
+            <div class="zona-adjuntos">
+              <label class="boton-adjuntar" for="adjuntos">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21.44 11.05 12.25 20.24a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95L9.64 18.6a2 2 0 0 1-2.83-2.83l8.06-8.06" />
+                </svg>
+                Adjuntar archivo
+              </label>
+              <input type="file" id="adjuntos" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" />
+              <ul class="lista-adjuntos" id="lista-adjuntos"></ul>
+            </div>
+            <p class="ayuda" style="margin-top:0.5rem;">
+              ¿Vas a mandar una cotización? Descárgala en PDF desde el <a href="../cotizador/">Cotizador</a> y
+              adjúntala aquí. Máximo 8&nbsp;MB en total entre todos los archivos.
+            </p>
+          </div>
+
           <button class="enviar" type="submit" id="boton-enviar">Enviar correo</button>
           <div class="estado" id="estado" role="status"></div>
         </form>
 
-        <div class="panel previsualizacion">
-          <h2>Vista previa</h2>
-          <iframe id="vista" title="Vista previa del correo"></iframe>
+        <div class="panel previsualizacion" id="previsualizacion" data-ancho="escritorio">
+          <div class="previsualizacion-cabecera">
+            <h2>Vista previa</h2>
+            <div class="controles-previa">
+              <div class="segmentado" role="group" aria-label="Ancho de la vista previa">
+                <button type="button" id="ancho-escritorio" class="activo">Escritorio</button>
+                <button type="button" id="ancho-celular">Celular</button>
+              </div>
+              <button type="button" class="boton-pantalla-completa" id="boton-completa">Pantalla completa</button>
+            </div>
+          </div>
+          <div class="lienzo-previa">
+            <iframe id="vista" title="Vista previa del correo"></iframe>
+          </div>
         </div>
       </div>
     </main>
 
     <script type="module">
-      import { REMITENTES, PLANTILLAS, renderCorreo } from './plantillas.js';
+      import { REMITENTES, PLANTILLAS, previsualizarCorreo, MAXIMO_ADJUNTOS_BYTES } from './plantillas.js';
 
       const $remitente = document.getElementById('remitente');
       const $plantilla = document.getElementById('plantilla');
@@ -290,8 +491,15 @@
       const $formulario = document.getElementById('formulario');
       const $boton = document.getElementById('boton-enviar');
       const $estado = document.getElementById('estado');
+      const $adjuntosInput = document.getElementById('adjuntos');
+      const $listaAdjuntos = document.getElementById('lista-adjuntos');
+      const $previsualizacion = document.getElementById('previsualizacion');
+      const $botonCompleta = document.getElementById('boton-completa');
+      const $anchoEscritorio = document.getElementById('ancho-escritorio');
+      const $anchoCelular = document.getElementById('ancho-celular');
 
       let asuntoTocadoAMano = false;
+      let adjuntos = []; // { nombre, tipo, tamano, contenidoBase64 }
 
       for (const r of Object.values(REMITENTES)) {
         const opt = document.createElement('option');
@@ -344,35 +552,126 @@
         actualizarVista();
       }
 
+      // Vista previa: siempre se pinta, aunque falten campos obligatorios —
+      // `previsualizarCorreo` no exige nada, para que se vea el correo
+      // tomando forma mientras se escribe en vez de quedarse en blanco.
       function actualizarVista() {
         const plantilla = PLANTILLAS[$plantilla.value];
         const datos = datosFormulario();
 
         if (!asuntoTocadoAMano) $asunto.value = plantilla.asunto(datos);
 
-        try {
-          const { html } = renderCorreo($remitente.value, $plantilla.value, {
-            ...datos,
-            // La vista previa no exige los campos obligatorios todavía: se
-            // ve el correo tomando forma mientras se escribe.
-          });
-          $vista.srcdoc = html;
-        } catch {
-          // Falta algún campo obligatorio: no pasa nada, se actualiza cuando
-          // esté completo.
-        }
+        const { html } = previsualizarCorreo($remitente.value, $plantilla.value, datos);
+        $vista.srcdoc = html;
       }
 
       $remitente.addEventListener('change', actualizarVista);
       $plantilla.addEventListener('change', pintarCampos);
       $asunto.addEventListener('input', () => { asuntoTocadoAMano = true; });
 
+      // --- Ancho de la vista previa (escritorio / celular) -------------------
+
+      function elegirAncho(ancho) {
+        $previsualizacion.dataset.ancho = ancho;
+        $anchoEscritorio.classList.toggle('activo', ancho === 'escritorio');
+        $anchoCelular.classList.toggle('activo', ancho === 'celular');
+      }
+      $anchoEscritorio.addEventListener('click', () => elegirAncho('escritorio'));
+      $anchoCelular.addEventListener('click', () => elegirAncho('celular'));
+
+      // --- Pantalla completa ---------------------------------------------------
+
+      $botonCompleta.addEventListener('click', () => {
+        const completa = $previsualizacion.classList.toggle('completa');
+        $botonCompleta.textContent = completa ? 'Salir de pantalla completa' : 'Pantalla completa';
+      });
+
+      // --- Adjuntos --------------------------------------------------------------
+
+      function formatoTamano(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      }
+
+      function pesoTotalAdjuntos() {
+        return adjuntos.reduce((suma, a) => suma + a.tamano, 0);
+      }
+
+      function pintarAdjuntos() {
+        $listaAdjuntos.innerHTML = '';
+        adjuntos.forEach((a, indice) => {
+          const li = document.createElement('li');
+
+          const nombre = document.createElement('span');
+          nombre.className = 'nombre';
+          nombre.textContent = a.nombre;
+
+          const tamano = document.createElement('span');
+          tamano.className = 'tamano';
+          tamano.textContent = formatoTamano(a.tamano);
+
+          const quitar = document.createElement('button');
+          quitar.type = 'button';
+          quitar.textContent = 'Quitar';
+          quitar.addEventListener('click', () => {
+            adjuntos.splice(indice, 1);
+            pintarAdjuntos();
+          });
+
+          li.appendChild(nombre);
+          li.appendChild(tamano);
+          li.appendChild(quitar);
+          $listaAdjuntos.appendChild(li);
+        });
+      }
+
+      function leerComoBase64(archivo) {
+        return new Promise((resolver, rechazar) => {
+          const lector = new FileReader();
+          lector.onload = () => resolver(String(lector.result).split(',')[1] ?? '');
+          lector.onerror = () => rechazar(new Error(`No se pudo leer "${archivo.name}".`));
+          lector.readAsDataURL(archivo);
+        });
+      }
+
+      $adjuntosInput.addEventListener('change', async () => {
+        const nuevos = Array.from($adjuntosInput.files ?? []);
+        $adjuntosInput.value = ''; // permite volver a elegir el mismo archivo si lo quita y lo agrega de nuevo
+
+        for (const archivo of nuevos) {
+          if (pesoTotalAdjuntos() + archivo.size > MAXIMO_ADJUNTOS_BYTES) {
+            mostrarEstado('error', `"${archivo.name}" no cabe: el total de adjuntos no puede pasar de ${formatoTamano(MAXIMO_ADJUNTOS_BYTES)}.`);
+            continue;
+          }
+          try {
+            const contenidoBase64 = await leerComoBase64(archivo);
+            adjuntos.push({
+              nombre: archivo.name,
+              tipo: archivo.type || 'application/octet-stream',
+              tamano: archivo.size,
+              contenidoBase64,
+            });
+          } catch (error) {
+            mostrarEstado('error', error.message);
+          }
+        }
+        pintarAdjuntos();
+      });
+
+      function mostrarEstado(tipo, texto) {
+        $estado.className = `estado ${tipo}`;
+        $estado.textContent = texto;
+      }
+
+      // --- Envío -----------------------------------------------------------------
+
       pintarCampos();
 
       $formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
+        mostrarEstado('', '');
         $estado.className = 'estado';
-        $estado.textContent = '';
 
         if (!$formulario.reportValidity()) return;
 
@@ -389,22 +688,37 @@
               destinatario: $destinatario.value.trim(),
               asunto: $asunto.value.trim(),
               datos: datosFormulario(),
+              adjuntos: adjuntos.map((a) => ({
+                nombre: a.nombre,
+                tipo: a.tipo,
+                contenidoBase64: a.contenidoBase64,
+              })),
             }),
           });
 
-          const cuerpo = await respuesta.json();
+          let cuerpo = null;
+          try {
+            cuerpo = await respuesta.json();
+          } catch {
+            // La respuesta no era JSON — típicamente porque la petición ni
+            // siquiera llegó al Worker (dirección equivocada, sitio de
+            // muestra sin trastienda, etc.), no un error de la aplicación.
+            throw new Error(
+              'No se pudo hablar con el servidor de envío. Revisa que estés en el sitio publicado de verdad (no en la vista previa de muestra) y que tengas conexión.',
+            );
+          }
 
           if (!respuesta.ok) {
             throw new Error(cuerpo?.mensaje || 'No se pudo enviar el correo.');
           }
 
-          $estado.className = 'estado ok';
-          $estado.textContent = `Correo enviado a ${$destinatario.value.trim()}.`;
+          mostrarEstado('ok', `Correo enviado a ${$destinatario.value.trim()}.`);
           $formulario.reset();
+          adjuntos = [];
+          pintarAdjuntos();
           pintarCampos();
         } catch (error) {
-          $estado.className = 'estado error';
-          $estado.textContent = error.message || 'No se pudo enviar el correo.';
+          mostrarEstado('error', error.message || 'No se pudo enviar el correo.');
         } finally {
           $boton.disabled = false;
           $boton.textContent = 'Enviar correo';
