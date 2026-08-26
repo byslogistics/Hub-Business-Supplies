@@ -182,6 +182,26 @@ function Cotizador({
     <div className="flex min-h-screen flex-col pb-28 lg:pb-0">
       <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[110rem] items-center gap-x-4 gap-y-3 px-4 py-3 lg:px-6">
+          <a
+            href="../"
+            className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-neutral-500 hover:text-neutral-700 sm:flex"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m12 19-7-7 7-7" />
+              <path d="M19 12H5" />
+            </svg>
+            Hub
+          </a>
           <img src="./marca/logo.png" alt={EMPRESA.nombreComercial} className="h-9 w-auto" />
           <div className="mr-auto min-w-0">
             <h1 className="truncate text-sm font-bold text-neutral-800">
