@@ -24,6 +24,17 @@
 //
 // Para añadir o corregir una vendedora: sólo hay que editar este objeto. No
 // hace falta tocar nada más del archivo.
+
+/**
+ * @typedef {object} Remitente
+ * @property {string} id
+ * @property {string} nombre
+ * @property {string} cargo
+ * @property {string} whatsapp
+ * @property {string} correoDirecto A esta dirección llegan las respuestas.
+ */
+
+/** @type {Record<string, Remitente>} */
 export const REMITENTES = {
   paola: {
     id: 'paola',
@@ -289,7 +300,7 @@ export const PLANTILLAS = {
  * @param {Record<string, string>} datos
  * @param {string[]} [ctasActivos] Claves de `DEFINICIONES_CTA` a incluir. Si
  *   se omite, se usan las que la plantilla trae sugeridas.
- * @returns {{ asunto: string, html: string, remitente: object }}
+ * @returns {{ asunto: string, html: string, remitente: Remitente }}
  */
 export function renderCorreo(remitenteId, plantillaId, datos, ctasActivos) {
   const { remitente, plantilla } = resolver(remitenteId, plantillaId);

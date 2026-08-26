@@ -17,13 +17,16 @@
  */
 
 import {
+  MAXIMO_SELECCION,
   mismoCliente,
   POR_PAGINA,
   type CotizacionGuardada,
+  type Cuantas,
   type Estado,
   type FiltroHistorial,
   type PaginaHistorial,
   type ResumenCotizacion,
+  type Seleccion,
 } from '../../../compartido/historial';
 import { totalesDeCotizacion } from '../dominio/precios';
 import type { Cotizacion } from '../dominio/tipos';
@@ -71,6 +74,10 @@ function siguienteNumero(guardadas: Guardadas): string {
  * igual que lo que vendrá después, no que compartan implementación.
  */
 function cumple(guardada: CotizacionGuardada<Cotizacion>, filtro: FiltroHistorial): boolean {
+  // Lo primero, igual que allá: o lo que está a la vista o lo que está en la
+  // papelera, nunca los dos mezclados.
+  if (Boolean(filtro.papelera) !== Boolean(guardada.eliminadaEn)) return false;
+
   const texto = filtro.texto?.trim().toLowerCase();
   if (texto) {
     const donde = [guardada.numero, guardada.cliente, guardada.nit, guardada.contacto]
@@ -86,7 +93,10 @@ function cumple(guardada: CotizacionGuardada<Cotizacion>, filtro: FiltroHistoria
 
 function aResumen(guardada: CotizacionGuardada<Cotizacion>): ResumenCotizacion {
   const { documento: _documento, ...resumen } = guardada;
-  return resumen;
+  // Los dos campos de la papelera se normalizan porque en `localStorage`
+  // puede haber cotizaciones guardadas por una versión anterior de la vista
+  // previa, que no los traía.
+  return { ...resumen, eliminadaEn: resumen.eliminadaEn ?? null, eliminadaPor: resumen.eliminadaPor ?? null };
 }
 
 export const almacenLocal: Almacen = {
@@ -138,6 +148,9 @@ export const almacenLocal: Almacen = {
       estadoNota: previa?.estadoNota ?? '',
       estadoEn: previa?.estadoEn ?? null,
       estadoPor: previa?.estadoPor ?? null,
+      // Volver a emitir la saca de la papelera, igual que en el Worker.
+      eliminadaEn: null,
+      eliminadaPor: null,
       documento: { ...cotizacion, numero },
     };
 
@@ -186,4 +199,51 @@ export const almacenLocal: Almacen = {
     };
     escribir(guardadas);
   },
+
+  eliminar: async (seleccion) =>
+    tocar(seleccion, false, (guardada) => ({
+      ...guardada,
+      eliminadaEn: new Date().toISOString(),
+      eliminadaPor: CORREO,
+    })),
+
+  restaurar: async (seleccion) =>
+    tocar(seleccion, true, (guardada) => ({ ...guardada, eliminadaEn: null, eliminadaPor: null })),
+
+  purgar: async (seleccion) => tocar(seleccion, true, () => null),
 };
+
+/**
+ * Aplica una operación en bloque sobre las guardadas que alcance la selección.
+ *
+ * `papelera` no lo elige quien llama sino la operación, igual que en el
+ * Worker: eliminar sólo toca lo que está a la vista, y restaurar y purgar
+ * sólo lo que ya está en la papelera. Devolver `null` desde `cambio` borra la
+ * fila de verdad.
+ */
+function tocar(
+  seleccion: Seleccion,
+  papelera: boolean,
+  cambio: (guardada: CotizacionGuardada<Cotizacion>) => CotizacionGuardada<Cotizacion> | null,
+): Cuantas {
+  const guardadas = leer();
+
+  const alcanzadas =
+    'todas' in seleccion
+      ? Object.values(guardadas).filter((g) => cumple(g, { ...seleccion.filtro, papelera }))
+      : seleccion.numeros
+          .slice(0, MAXIMO_SELECCION)
+          .map((numero) => guardadas[numero])
+          .filter(
+            (g): g is CotizacionGuardada<Cotizacion> => !!g && Boolean(g.eliminadaEn) === papelera,
+          );
+
+  for (const guardada of alcanzadas) {
+    const siguiente = cambio(guardada);
+    if (siguiente) guardadas[guardada.numero] = siguiente;
+    else delete guardadas[guardada.numero];
+  }
+
+  escribir(guardadas);
+  return { cuantas: alcanzadas.length };
+}

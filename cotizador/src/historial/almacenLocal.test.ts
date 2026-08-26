@@ -233,3 +233,138 @@ describe('almacenLocal', () => {
     );
   });
 });
+
+/**
+ * La papelera.
+ *
+ * Se prueba contra el almacén de la vista previa porque es el único de los dos
+ * que corre sin servidor, pero las reglas que se comprueban aquí son las del
+ * contrato —qué alcanza cada operación, qué se puede deshacer y qué no— y el
+ * Worker tiene que cumplirlas igual. Si un día divergen, el preview estaría
+ * enseñando algo que no va a pasar.
+ */
+describe('almacenLocal · papelera', () => {
+  const deOtroCliente = {
+    empresa: 'Transportes del Norte',
+    nit: '900.111.222-3',
+    contacto: 'Luis Gómez',
+    telefono: '',
+    email: '',
+    ciudad: 'Medellín',
+  };
+
+  it('lo eliminado sale del historial y aparece en la papelera', async () => {
+    const { numero } = await almacenLocal.registrar(cotizacion());
+
+    expect(await almacenLocal.eliminar({ numeros: [numero] })).toEqual({ cuantas: 1 });
+
+    expect((await almacenLocal.listar({})).cuantas).toBe(0);
+    const papelera = await almacenLocal.listar({ papelera: true });
+    expect(papelera.cuantas).toBe(1);
+    expect(papelera.cotizaciones[0]!.eliminadaEn).toBeTruthy();
+    expect(papelera.cotizaciones[0]!.eliminadaPor).toBeTruthy();
+  });
+
+  it('eliminar no borra el documento: la cotización se puede restaurar entera', async () => {
+    // Es lo que separa la papelera de un borrado: mientras está ahí, el PDF
+    // que recibió el cliente se sigue pudiendo regenerar.
+    const { numero } = await almacenLocal.registrar(cotizacion());
+    await almacenLocal.eliminar({ numeros: [numero] });
+
+    expect((await almacenLocal.abrir(numero)).documento.lineas).toHaveLength(1);
+
+    expect(await almacenLocal.restaurar({ numeros: [numero] })).toEqual({ cuantas: 1 });
+    expect((await almacenLocal.listar({})).cuantas).toBe(1);
+    expect((await almacenLocal.listar({ papelera: true })).cuantas).toBe(0);
+  });
+
+  it('el estado comercial sobrevive a un viaje a la papelera y vuelta', async () => {
+    const { numero } = await almacenLocal.registrar(cotizacion());
+    await almacenLocal.marcar(numero, 'aceptada', 'Orden de compra 4512');
+
+    await almacenLocal.eliminar({ numeros: [numero] });
+    await almacenLocal.restaurar({ numeros: [numero] });
+
+    const guardada = await almacenLocal.abrir(numero);
+    expect(guardada.estado).toBe('aceptada');
+    expect(guardada.estadoNota).toBe('Orden de compra 4512');
+    expect(guardada.eliminadaEn).toBeNull();
+  });
+
+  it('purgar sólo alcanza lo que ya está en la papelera', async () => {
+    // La red de seguridad entera: sin el paso previo, una selección
+    // equivocada se lleva por delante cotizaciones que están a la vista.
+    const { numero } = await almacenLocal.registrar(cotizacion());
+
+    expect(await almacenLocal.purgar({ numeros: [numero] })).toEqual({ cuantas: 0 });
+    expect((await almacenLocal.listar({})).cuantas).toBe(1);
+
+    await almacenLocal.eliminar({ numeros: [numero] });
+    expect(await almacenLocal.purgar({ numeros: [numero] })).toEqual({ cuantas: 1 });
+
+    expect((await almacenLocal.listar({ papelera: true })).cuantas).toBe(0);
+    await expect(almacenLocal.abrir(numero)).rejects.toBeInstanceOf(FalloHistorial);
+  });
+
+  it('eliminar no alcanza lo que ya está en la papelera', async () => {
+    const { numero } = await almacenLocal.registrar(cotizacion());
+    await almacenLocal.eliminar({ numeros: [numero] });
+
+    // Ni la vuelve a retirar ni le pisa la fecha de retirada: quién la quitó
+    // y cuándo son el dato que hace falta para preguntar qué pasó.
+    const antes = (await almacenLocal.listar({ papelera: true })).cotizaciones[0]!.eliminadaEn;
+    expect(await almacenLocal.eliminar({ numeros: [numero] })).toEqual({ cuantas: 0 });
+    expect((await almacenLocal.listar({ papelera: true })).cotizaciones[0]!.eliminadaEn).toBe(antes);
+  });
+
+  it('«todas las que cumplen el filtro» alcanza justo a ésas', async () => {
+    // El caso que hace falta con mil cotizaciones guardadas: filtrar y
+    // borrarlas de una vez, sin que la de al lado se vaya de paso.
+    const suya = await almacenLocal.registrar(cotizacion());
+    const ajena = await almacenLocal.registrar(cotizacion({ cliente: deOtroCliente }));
+
+    expect(await almacenLocal.eliminar({ todas: true, filtro: { texto: 'Coordinadora' } })).toEqual({
+      cuantas: 1,
+    });
+
+    expect((await almacenLocal.listar({})).cotizaciones.map((c) => c.numero)).toEqual([
+      ajena.numero,
+    ]);
+    expect((await almacenLocal.listar({ papelera: true })).cotizaciones.map((c) => c.numero)).toEqual(
+      [suya.numero],
+    );
+  });
+
+  it('vaciar la papelera no toca lo que está a la vista', async () => {
+    const retirada = await almacenLocal.registrar(cotizacion());
+    const viva = await almacenLocal.registrar(cotizacion({ cliente: deOtroCliente }));
+    await almacenLocal.eliminar({ numeros: [retirada.numero] });
+
+    // Sin filtro y sobre la papelera: es «vaciar la papelera», y no puede
+    // significar «borrar el historial».
+    expect(await almacenLocal.purgar({ todas: true, filtro: {} })).toEqual({ cuantas: 1 });
+    expect((await almacenLocal.listar({})).cotizaciones.map((c) => c.numero)).toEqual([viva.numero]);
+  });
+
+  it('volver a emitir una cotización retirada la saca de la papelera', async () => {
+    // Lo que acaba de salir hacia un cliente no puede quedarse escondido.
+    const { numero } = await almacenLocal.registrar(cotizacion());
+    await almacenLocal.eliminar({ numeros: [numero] });
+
+    await almacenLocal.registrar(cotizacion({ numero }));
+
+    expect((await almacenLocal.listar({})).cuantas).toBe(1);
+    expect((await almacenLocal.listar({ papelera: true })).cuantas).toBe(0);
+  });
+
+  it('el número sigue ocupado aunque la cotización esté en la papelera', async () => {
+    // El consecutivo no retrocede: reutilizar un número gastado es lo que
+    // produce dos cotizaciones distintas con el mismo «COT-2026-0007».
+    const { numero } = await almacenLocal.registrar(cotizacion());
+    await almacenLocal.eliminar({ numeros: [numero] });
+
+    await expect(
+      almacenLocal.registrar(cotizacion({ numero, cliente: deOtroCliente })),
+    ).rejects.toMatchObject({ codigo: 'numero-ocupado' });
+  });
+});

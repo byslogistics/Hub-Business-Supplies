@@ -32,9 +32,18 @@ export const EMPRESA = {
   datosBancarios: '',
 } as const;
 
-/** Asesores que firman cotizaciones. El primero es el que se propone por defecto. */
+/**
+ * Asesores que firman cotizaciones. El primero es el que se propone por
+ * defecto en una cotización nueva.
+ *
+ * Son los mismos nombres que pueden firmar un correo comercial (`REMITENTES`
+ * en `correo/plantillas.js`); están escritos dos veces porque el correo y el
+ * cotizador se despliegan por separado y ninguno depende del otro. Al añadir
+ * a alguien conviene mirar los dos sitios.
+ */
 export const ASESORES: readonly string[] = [
   'Yeimy Mahecha',
+  'Paola Vargas',
   'Equipo comercial B&S Logistics',
 ];
 

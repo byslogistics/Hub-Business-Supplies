@@ -12,10 +12,12 @@
 
 import type {
   CotizacionGuardada,
+  Cuantas,
   FiltroHistorial,
   Identidad,
   PaginaHistorial,
   ErrorApi,
+  Seleccion,
 } from '../../../compartido/historial';
 import type { Cotizacion } from '../dominio/tipos';
 import { almacenLocal } from './almacenLocal';
@@ -54,6 +56,7 @@ export function urlDelListado(filtro: FiltroHistorial, base = BASE): string {
   if (filtro.desde) parametros.set('desde', filtro.desde);
   if (filtro.hasta) parametros.set('hasta', filtro.hasta);
   if (filtro.pagina && filtro.pagina > 1) parametros.set('pagina', String(filtro.pagina));
+  if (filtro.papelera) parametros.set('papelera', '1');
 
   const cadena = parametros.toString();
   return cadena ? `${base}/cotizaciones?${cadena}` : `${base}/cotizaciones`;
@@ -109,6 +112,21 @@ const almacenHttp: Almacen = {
       body: JSON.stringify({ estado, nota }),
     });
   },
+
+  // Las tres van por POST con la selección en el cuerpo, y no por DELETE con
+  // los números en la dirección, por lo mismo: la selección puede ser «todas
+  // las que cumplen este filtro», que no cabe en una URL ni conviene que
+  // quede escrita en el registro de accesos de nadie.
+  eliminar: (seleccion) => enBloque('eliminar', seleccion),
+  restaurar: (seleccion) => enBloque('restaurar', seleccion),
+  purgar: (seleccion) => enBloque('purgar', seleccion),
 };
+
+function enBloque(accion: 'eliminar' | 'restaurar' | 'purgar', seleccion: Seleccion): Promise<Cuantas> {
+  return pedir<Cuantas>(`${BASE}/cotizaciones/${accion}`, {
+    method: 'POST',
+    body: JSON.stringify(seleccion),
+  });
+}
 
 export const almacen: Almacen = ES_DEMOSTRACION ? almacenLocal : almacenHttp;
