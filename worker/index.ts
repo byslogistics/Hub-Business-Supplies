@@ -141,6 +141,40 @@ interface PeticionCorreo {
   asunto?: string;
   datos?: Record<string, string>;
   adjuntos?: AdjuntoRecibido[];
+  /** Si la vendedora marcó "Enviarme una copia". La dirección de esa copia
+   *  nunca sale de aquí — sale de `correo`, la identidad ya comprobada por
+   *  Access, para que nadie pueda pedir copia a una dirección ajena. */
+  copiaAlRemitente?: boolean;
+}
+
+/** Ningún correo comercial necesita más destinatarios que esto de una vez. */
+const MAXIMO_DESTINATARIOS = 5;
+
+/**
+ * El campo del formulario admite varias direcciones separadas por coma. Cada
+ * una se valida por separado, y una sola inválida rechaza todo el envío —
+ * mejor que la vendedora corrija el correo mal escrito a que uno de cinco
+ * clientes se quede sin recibirlo en silencio.
+ */
+function parsearDestinatarios(destinatario: string | undefined): string[] {
+  const direcciones = (destinatario ?? '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean);
+
+  if (direcciones.length === 0) {
+    throw new ErrorPeticion(400, 'invalida', 'Falta el correo del destinatario.');
+  }
+  if (direcciones.length > MAXIMO_DESTINATARIOS) {
+    throw new ErrorPeticion(400, 'invalida', `No se pueden mandar más de ${MAXIMO_DESTINATARIOS} destinatarios a la vez.`);
+  }
+  for (const direccion of direcciones) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(direccion)) {
+      throw new ErrorPeticion(400, 'invalida', `«${direccion}» no es un correo válido.`);
+    }
+  }
+
+  return direcciones;
 }
 
 /**
@@ -166,7 +200,7 @@ async function enviarCorreo(
     throw new ErrorPeticion(400, 'invalida', 'El cuerpo no es JSON válido.');
   }
 
-  const { remitenteId, plantillaId, destinatario, asunto, datos, adjuntos } = cuerpo;
+  const { remitenteId, plantillaId, destinatario, asunto, datos, adjuntos, copiaAlRemitente } = cuerpo;
 
   if (!remitenteId || !(remitenteId in REMITENTES)) {
     throw new ErrorPeticion(400, 'invalida', 'Ese remitente no existe.');
@@ -174,9 +208,7 @@ async function enviarCorreo(
   if (!plantillaId || !(plantillaId in PLANTILLAS)) {
     throw new ErrorPeticion(400, 'invalida', 'Esa plantilla no existe.');
   }
-  if (!destinatario || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario)) {
-    throw new ErrorPeticion(400, 'invalida', 'El correo del destinatario no es válido.');
-  }
+  const destinatarios = parsearDestinatarios(destinatario);
 
   let generado: ReturnType<typeof renderCorreo>;
   try {
@@ -201,9 +233,12 @@ async function enviarCorreo(
     body: JSON.stringify({
       from: `${generado.remitente.nombre} - B&S Logistics <${EMPRESA.correoVentas}>`,
       reply_to: generado.remitente.correoDirecto,
-      to: [destinatario],
+      to: destinatarios,
       subject: asuntoFinal,
       html: generado.html,
+      // La copia va a `correo` —la identidad ya comprobada por Access— y
+      // nunca a una dirección que venga del cuerpo de la petición.
+      ...(copiaAlRemitente ? { cc: [correo] } : {}),
       ...(adjuntosValidados.length > 0
         ? { attachments: adjuntosValidados.map((a) => ({ filename: a.nombre, content: a.contenidoBase64 })) }
         : {}),

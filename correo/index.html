@@ -427,14 +427,30 @@
           <h2>2. Destinatario</h2>
           <div class="campo">
             <label for="destinatario">Correo del cliente</label>
-            <input type="email" id="destinatario" name="destinatario" required placeholder="cliente@empresa.com" />
+            <input
+              type="email"
+              id="destinatario"
+              name="destinatario"
+              required
+              multiple
+              placeholder="cliente@empresa.com"
+            />
+            <p class="ayuda" style="margin-top:0.35rem;">
+              Si necesitas mandarlo a varias personas a la vez, sepáralas con comas (máximo 5).
+            </p>
+          </div>
+          <div class="campo campo-casilla" style="display:none;" id="campo-copia">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-weight:500;">
+              <input type="checkbox" id="copia" style="width:auto;" />
+              Enviarme una copia a mí (<span id="copia-correo"></span>)
+            </label>
           </div>
 
           <h2>3. Contenido</h2>
           <div class="campo">
             <label for="asunto">Asunto</label>
             <input type="text" id="asunto" name="asunto" />
-            <p class="ayuda" style="margin-top:0.35rem;">
+            <p class="ayuda" id="asunto-ayuda" style="margin-top:0.35rem;">
               Se rellena solo según la plantilla; puedes cambiarlo si quieres.
             </p>
           </div>
@@ -450,12 +466,21 @@
                 </svg>
                 Adjuntar archivo
               </label>
-              <input type="file" id="adjuntos" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" />
+              <input
+                type="file"
+                id="adjuntos"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.docx,.doc"
+                style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;"
+              />
               <ul class="lista-adjuntos" id="lista-adjuntos"></ul>
+              <p class="ayuda" id="error-adjuntos" style="display:none;margin:0;color:#b8362b;"></p>
+              <p class="ayuda" id="peso-adjuntos" style="margin:0;"></p>
             </div>
             <p class="ayuda" style="margin-top:0.5rem;">
               ¿Vas a mandar una cotización? Descárgala en PDF desde el <a href="../cotizador/">Cotizador</a> y
-              adjúntala aquí. Máximo 8&nbsp;MB en total entre todos los archivos.
+              adjúntala aquí. Se aceptan PDF, imágenes, Excel y Word — máximo 8&nbsp;MB en total entre todos los
+              archivos.
             </p>
           </div>
 
@@ -489,6 +514,7 @@
       const $descripcion = document.getElementById('descripcion-plantilla');
       const $destinatario = document.getElementById('destinatario');
       const $asunto = document.getElementById('asunto');
+      const $asuntoAyuda = document.getElementById('asunto-ayuda');
       const $camposPlantilla = document.getElementById('campos-plantilla');
       const $vista = document.getElementById('vista');
       const $formulario = document.getElementById('formulario');
@@ -496,13 +522,31 @@
       const $estado = document.getElementById('estado');
       const $adjuntosInput = document.getElementById('adjuntos');
       const $listaAdjuntos = document.getElementById('lista-adjuntos');
+      const $errorAdjuntos = document.getElementById('error-adjuntos');
+      const $pesoAdjuntos = document.getElementById('peso-adjuntos');
       const $previsualizacion = document.getElementById('previsualizacion');
       const $botonCompleta = document.getElementById('boton-completa');
       const $anchoEscritorio = document.getElementById('ancho-escritorio');
       const $anchoCelular = document.getElementById('ancho-celular');
+      const $campoCopia = document.getElementById('campo-copia');
+      const $copia = document.getElementById('copia');
+      const $copiaCorreo = document.getElementById('copia-correo');
 
       let asuntoTocadoAMano = false;
       let adjuntos = []; // { nombre, tipo, tamano, contenidoBase64 }
+
+      // --- Quién soy (para "enviarme una copia") ------------------------------
+      //
+      // Si esto falla no pasa nada grave: la casilla simplemente no aparece y
+      // el correo se manda igual, sin copia.
+      fetch('/api/yo')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((datos) => {
+          if (!datos?.correo) return;
+          $copiaCorreo.textContent = datos.correo;
+          $campoCopia.style.display = '';
+        })
+        .catch(() => {});
 
       for (const r of Object.values(REMITENTES)) {
         const opt = document.createElement('option');
@@ -525,6 +569,12 @@
         }
         return datos;
       }
+
+      function hayContenidoEscrito() {
+        return Object.values(datosFormulario()).some((valor) => valor.trim() !== '');
+      }
+
+      let plantillaAnterior = null;
 
       function pintarCampos() {
         const plantilla = PLANTILLAS[$plantilla.value];
@@ -552,8 +602,21 @@
         }
 
         asuntoTocadoAMano = false;
+        $asuntoAyuda.textContent = 'Se rellena solo según la plantilla; puedes cambiarlo si quieres.';
+        plantillaAnterior = $plantilla.value;
         actualizarVista();
       }
+
+      // Cambiar de plantilla borra lo que ya se había escrito en los campos de
+      // la anterior — si hay algo escrito, se confirma antes para que no se
+      // pierda por accidente.
+      $plantilla.addEventListener('change', () => {
+        if (hayContenidoEscrito() && !confirm('Cambiar de plantilla borra lo que ya escribiste. ¿Continuar?')) {
+          $plantilla.value = plantillaAnterior;
+          return;
+        }
+        pintarCampos();
+      });
 
       // Vista previa: siempre se pinta, aunque falten campos obligatorios —
       // `previsualizarCorreo` no exige nada, para que se vea el correo
@@ -569,8 +632,10 @@
       }
 
       $remitente.addEventListener('change', actualizarVista);
-      $plantilla.addEventListener('change', pintarCampos);
-      $asunto.addEventListener('input', () => { asuntoTocadoAMano = true; });
+      $asunto.addEventListener('input', () => {
+        asuntoTocadoAMano = true;
+        $asuntoAyuda.textContent = 'Ya no se actualiza solo — lo escribiste a mano.';
+      });
 
       // --- Ancho de la vista previa (escritorio / celular) -------------------
 
@@ -608,7 +673,23 @@
         return adjuntos.reduce((suma, a) => suma + a.tamano, 0);
       }
 
+      const EXTENSIONES_PERMITIDAS = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'xlsx', 'xls', 'docx', 'doc'];
+
+      function extensionDe(nombreArchivo) {
+        return nombreArchivo.split('.').pop()?.toLowerCase() ?? '';
+      }
+
+      function errorAdjuntos(texto) {
+        $errorAdjuntos.textContent = texto;
+        $errorAdjuntos.style.display = texto ? 'block' : 'none';
+      }
+
       function pintarAdjuntos() {
+        const peso = pesoTotalAdjuntos();
+        $pesoAdjuntos.textContent = adjuntos.length
+          ? `${adjuntos.length} archivo${adjuntos.length === 1 ? '' : 's'} — ${formatoTamano(peso)} de ${formatoTamano(MAXIMO_ADJUNTOS_BYTES)}`
+          : '';
+
         $listaAdjuntos.innerHTML = '';
         adjuntos.forEach((a, indice) => {
           const li = document.createElement('li');
@@ -649,9 +730,15 @@
         const nuevos = Array.from($adjuntosInput.files ?? []);
         $adjuntosInput.value = ''; // permite volver a elegir el mismo archivo si lo quita y lo agrega de nuevo
 
+        errorAdjuntos('');
+
         for (const archivo of nuevos) {
+          if (!EXTENSIONES_PERMITIDAS.includes(extensionDe(archivo.name))) {
+            errorAdjuntos(`"${archivo.name}" no se puede adjuntar: sólo se aceptan PDF, imágenes, Excel y Word.`);
+            continue;
+          }
           if (pesoTotalAdjuntos() + archivo.size > MAXIMO_ADJUNTOS_BYTES) {
-            mostrarEstado('error', `"${archivo.name}" no cabe: el total de adjuntos no puede pasar de ${formatoTamano(MAXIMO_ADJUNTOS_BYTES)}.`);
+            errorAdjuntos(`"${archivo.name}" no cabe: el total de adjuntos no puede pasar de ${formatoTamano(MAXIMO_ADJUNTOS_BYTES)}.`);
             continue;
           }
           try {
@@ -663,7 +750,7 @@
               contenidoBase64,
             });
           } catch (error) {
-            mostrarEstado('error', error.message);
+            errorAdjuntos(error.message);
           }
         }
         pintarAdjuntos();
@@ -685,6 +772,9 @@
 
         if (!$formulario.reportValidity()) return;
 
+        const destino = $destinatario.value.trim();
+        if (!confirm(`¿Enviar este correo a ${destino}?`)) return;
+
         $boton.disabled = true;
         $boton.textContent = 'Enviando…';
 
@@ -695,9 +785,10 @@
             body: JSON.stringify({
               remitenteId: $remitente.value,
               plantillaId: $plantilla.value,
-              destinatario: $destinatario.value.trim(),
+              destinatario: destino,
               asunto: $asunto.value.trim(),
               datos: datosFormulario(),
+              copiaAlRemitente: $copia.checked,
               adjuntos: adjuntos.map((a) => ({
                 nombre: a.nombre,
                 tipo: a.tipo,
@@ -722,9 +813,10 @@
             throw new Error(cuerpo?.mensaje || 'No se pudo enviar el correo.');
           }
 
-          mostrarEstado('ok', `Correo enviado a ${$destinatario.value.trim()}.`);
+          mostrarEstado('ok', `Correo enviado a ${destino}.`);
           $formulario.reset();
           adjuntos = [];
+          errorAdjuntos('');
           pintarAdjuntos();
           pintarCampos();
         } catch (error) {
