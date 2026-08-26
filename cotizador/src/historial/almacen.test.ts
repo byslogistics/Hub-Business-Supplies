@@ -35,6 +35,16 @@ describe('urlDelListado', () => {
     );
   });
 
+  it('pide la papelera sólo cuando se pide', () => {
+    // Que la papelera sea un parámetro y no otra dirección es lo que permite
+    // que el resto del filtro —texto, estado, fechas— siga valiendo en ella.
+    expect(urlDelListado({ papelera: false })).toBe('/api/cotizaciones');
+    expect(urlDelListado({ papelera: true })).toBe('/api/cotizaciones?papelera=1');
+    expect(urlDelListado({ texto: 'ANCLA', papelera: true })).toBe(
+      '/api/cotizaciones?texto=ANCLA&papelera=1',
+    );
+  });
+
   it('junta todos los filtros', () => {
     expect(
       urlDelListado({

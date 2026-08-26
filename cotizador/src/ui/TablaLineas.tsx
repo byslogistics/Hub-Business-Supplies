@@ -8,7 +8,8 @@
  */
 
 import { productoPorId } from '../dominio/catalogo';
-import { pesos, porcentaje, unidades } from '../dominio/formato';
+import { dinero, pasoDe, pesos, porcentaje, unidades } from '../dominio/formato';
+import { aMoneda, EN_PESOS, type Cambio } from '../dominio/moneda';
 import { margenDeLinea, oportunidadDeVolumen, totalesDeLinea } from '../dominio/precios';
 import type { Alerta } from '../dominio/revision';
 import type { Linea } from '../dominio/tipos';
@@ -20,13 +21,29 @@ interface Props {
   despachar: Despachar;
   /** Tarifa de IVA de la cotización, para el desglose de cada línea. */
   iva: number;
+  /**
+   * La moneda de la cotización y su tasa.
+   *
+   * Hace falta en toda la tabla: los importes de la línea van en esa moneda,
+   * pero lo que viene del listado —el ahorro por volumen, el costo de compra,
+   * el recargo por centímetro— está en pesos y hay que convertirlo o
+   * etiquetarlo como pesos, según el caso.
+   */
+  cambio?: Cambio;
   /** Alertas por línea, calculadas en el dominio. */
   alertasPorLinea: ReadonlyMap<string, readonly Alerta[]>;
   /** Muestra costo y margen. Es información interna: nunca sale en el PDF. */
   verMargen: boolean;
 }
 
-export function TablaLineas({ lineas, despachar, iva, alertasPorLinea, verMargen }: Props) {
+export function TablaLineas({
+  lineas,
+  despachar,
+  iva,
+  cambio = EN_PESOS,
+  alertasPorLinea,
+  verMargen,
+}: Props) {
   if (lineas.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-500">
@@ -46,6 +63,7 @@ export function TablaLineas({ lineas, despachar, iva, alertasPorLinea, verMargen
           esUltima={indice === lineas.length - 1}
           despachar={despachar}
           iva={iva}
+          cambio={cambio}
           alertas={alertasPorLinea.get(linea.id) ?? []}
           verMargen={verMargen}
         />
@@ -61,6 +79,7 @@ function FilaLinea({
   esUltima,
   despachar,
   iva,
+  cambio,
   alertas,
   verMargen,
 }: {
@@ -70,15 +89,16 @@ function FilaLinea({
   esUltima: boolean;
   despachar: Despachar;
   iva: number;
+  cambio: Cambio;
   alertas: readonly Alerta[];
   verMargen: boolean;
 }) {
   const producto = productoPorId(linea.productoId);
-  const totales = totalesDeLinea(linea, iva);
+  const totales = totalesDeLinea(linea, iva, cambio.moneda);
   const variante = { conLogo: linea.conLogo, medida: linea.medida };
 
   const oportunidad = producto ? oportunidadDeVolumen(producto, linea.cantidad, variante) : null;
-  const margen = margenDeLinea(producto, linea);
+  const margen = margenDeLinea(producto, linea, cambio);
   const desviado = alertas.some(
     (a) => a.tipo === 'precio-manual' || a.tipo === 'precio-desactualizado',
   );
@@ -120,10 +140,14 @@ function FilaLinea({
             />
 
             <label className="block">
-              <span className="etiqueta">Valor unitario</span>
+              {/* El rótulo dice la moneda: es lo que impide teclear 3.500 en
+                  un campo que está pidiendo dólares. */}
+              <span className="etiqueta">Valor unitario ({cambio.moneda})</span>
               <CampoNumero
-                aria-label={`Valor unitario de ${linea.descripcion}`}
+                aria-label={`Valor unitario de ${linea.descripcion} en ${cambio.moneda}`}
                 valor={linea.unitario}
+                // En dólares hay que poder escribir centavos; en pesos, no.
+                step={pasoDe(cambio.moneda)}
                 alCambiar={(unitario) => editar({ unitario, precioManual: true })}
                 className={desviado ? 'border-amber-400 bg-amber-50' : ''}
               />
@@ -150,7 +174,7 @@ function FilaLinea({
                   {producto.medidas.map((medida) => (
                     <option key={medida.nombre} value={medida.nombre}>
                       {medida.nombre}
-                      {medida.cmAdicional ? ` (+${pesos(medida.cmAdicional)}/cm)` : ''}
+                      {medida.cmAdicional ? ` (+${pesos(medida.cmAdicional)} COP/cm)` : ''}
                     </option>
                   ))}
                 </select>
@@ -176,6 +200,7 @@ function FilaLinea({
           <Avisos
             linea={linea}
             alertas={alertas}
+            cambio={cambio}
             oportunidad={oportunidad}
             margen={verMargen ? margen : null}
             costo={verMargen ? producto?.costoReferencia : undefined}
@@ -187,8 +212,12 @@ function FilaLinea({
 
         <div className="flex w-full items-center justify-between gap-3 border-t border-neutral-100 pt-3 lg:w-auto lg:shrink-0 lg:flex-col lg:items-end lg:gap-1 lg:border-0 lg:pt-0">
           <div className="flex items-baseline gap-2 lg:flex-col lg:items-end lg:gap-1">
-            <span className="text-sm font-bold text-neutral-800">{pesos(totales.subtotal)}</span>
-            <span className="text-xs text-neutral-500">+ IVA {pesos(totales.iva)}</span>
+            <span className="text-sm font-bold text-neutral-800">
+              {dinero(totales.subtotal, cambio.moneda)}
+            </span>
+            <span className="text-xs text-neutral-500">
+              + IVA {dinero(totales.iva, cambio.moneda)}
+            </span>
           </div>
           <div className="flex gap-0.5 lg:mt-1">
             <BotonIcono
@@ -222,6 +251,7 @@ function FilaLinea({
 function Avisos({
   linea,
   alertas,
+  cambio,
   oportunidad,
   margen,
   costo,
@@ -231,6 +261,7 @@ function Avisos({
 }: {
   linea: Linea;
   alertas: readonly Alerta[];
+  cambio: Cambio;
   oportunidad: ReturnType<typeof oportunidadDeVolumen>;
   margen: number | null;
   costo?: number;
@@ -239,6 +270,10 @@ function Avisos({
   alSubirVolumen: (cantidad: number) => void;
 }) {
   const avisos: React.ReactNode[] = [];
+  /** Las alertas ya vienen en la moneda del documento; sólo hay que pintarlas. */
+  const importe = (valor: number) => dinero(valor, cambio.moneda);
+  /** Lo que viene del listado sí hay que convertirlo: allá todo es en pesos. */
+  const delListado = (valorEnPesos: number) => importe(aMoneda(valorEnPesos, cambio));
 
   for (const alerta of alertas) {
     switch (alerta.tipo) {
@@ -254,8 +289,8 @@ function Avisos({
       case 'precio-desactualizado':
         avisos.push(
           <span key="desactualizado" className="font-semibold text-red-700">
-            El listado cambió: esta referencia pasó de {pesos(alerta.guardado)} a{' '}
-            {pesos(alerta.vigente)}.{' '}
+            El listado cambió: esta referencia pasó de {importe(alerta.guardado)} a{' '}
+            {importe(alerta.vigente)}.{' '}
             <button type="button" className="underline" onClick={alRestaurar}>
               Actualizar al precio vigente
             </button>
@@ -266,7 +301,7 @@ function Avisos({
       case 'precio-manual':
         avisos.push(
           <span key="manual" className="text-amber-700">
-            Precio editado a mano. El listado sugiere {pesos(alerta.sugerido)} para{' '}
+            Precio editado a mano. El listado sugiere {importe(alerta.sugerido)} para{' '}
             {unidades(linea.cantidad)} unidades.{' '}
             <button type="button" className="font-bold underline" onClick={alRestaurar}>
               Usar el sugerido
@@ -289,8 +324,9 @@ function Avisos({
   if (oportunidad && oportunidad.ahorro > 0 && !linea.precioManual) {
     avisos.push(
       <span key="volumen" className="text-marca-700">
-        Con {unidades(oportunidad.cantidad)} unidades el total baja {pesos(oportunidad.ahorro)}{' '}
-        ({unidades(oportunidad.unidadesExtra)} más, a {pesos(oportunidad.unitario)} c/u).{' '}
+        Con {unidades(oportunidad.cantidad)} unidades el total baja{' '}
+        {delListado(oportunidad.ahorro)} ({unidades(oportunidad.unidadesExtra)} más, a{' '}
+        {delListado(oportunidad.unitario)} c/u).{' '}
         <button
           type="button"
           className="font-bold underline"
@@ -307,7 +343,10 @@ function Avisos({
     avisos.push(
       <span key="margen" className="inline-flex items-center gap-1.5">
         <Insignia tono={tono}>Margen {porcentaje(margen)}</Insignia>
-        <span className="text-neutral-500">costo {pesos(costo)}</span>
+        <span className="text-neutral-500">
+          costo {pesos(costo)}
+          {cambio.moneda === 'USD' ? ' COP' : ''}
+        </span>
       </span>,
     );
   }

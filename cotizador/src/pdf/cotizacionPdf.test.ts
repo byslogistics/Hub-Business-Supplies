@@ -33,6 +33,8 @@ function cotizacion(lineas: Linea[], observaciones = '', iva = 0.19): Cotizacion
     fecha: '2026-08-13',
     asesor: 'Yeimy Mahecha',
     iva,
+    moneda: 'COP',
+    tasa: 1,
     catalogoVersion: 'prueba',
     cliente: {
       empresa: 'TRANSPORTES Y LOGÍSTICA DEL CARIBE S.A.S.',
@@ -161,6 +163,25 @@ describe('construirPdf', () => {
     // anterior y sale en las hojas viejas del Excel, no de aquí.
     expect(texto).toContain('S.A.S.');
     expect(texto).not.toContain('LTDA');
+  });
+
+  it('en dólares declara la moneda y la tasa, y rotula las columnas', () => {
+    const enDolares = {
+      ...cotizacion([linea({ cantidad: 1000, unitario: 0.12 })], '', 0),
+      moneda: 'USD' as const,
+      tasa: 4100,
+    };
+    const doc = construirPdf(enDolares);
+    const texto = textoDelPdf(doc);
+
+    // Sin tilde en la búsqueda: el texto del PDF se lee en latin1 y las
+    // vocales acentuadas no coinciden con las de una cadena de JavaScript.
+    expect(texto).toContain('estadounidenses (USD)');
+    expect(texto).toContain('1 USD = $ 4.100 COP');
+    // La moneda va también en el encabezado de la tabla, que es donde mira
+    // quien la recorre con el dedo — ahí los números van sin símbolo.
+    expect(texto).toContain('Valor total (USD)');
+    guardar('cotizacion-dolares.pdf', doc);
   });
 
   it('usa la tarifa de la cotización y no una global', () => {

@@ -189,6 +189,45 @@ describe('totalesDeCotizacion', () => {
   });
 });
 
+describe('totales en dólares', () => {
+  const enDolares = { moneda: 'USD', tasa: 4000 } as const;
+
+  it('el redondeo respeta los centavos', () => {
+    // Con el redondeo a peso entero de siempre, 0,87 × 1.000 = 870 pasaba,
+    // pero un unitario de 0,87 se habría guardado como 1 y la línea entera
+    // saldría un 15 % más cara.
+    const t = totalesDeLinea(linea({ cantidad: 300, unitario: 0.87 }), 0.19, 'USD');
+
+    expect(t.bruto).toBe(261);
+    expect(t.iva).toBe(49.59);
+    expect(t.total).toBe(310.59);
+  });
+
+  it('la suma de varias líneas no arrastra restos de coma flotante', () => {
+    // 0,1 + 0,2 no da 0,3 en ningún lenguaje, y ese resto acabaría impreso en
+    // el PDF como «US$ 0,30000000000000004».
+    const totales = totalesDeCotizacion(
+      [
+        linea({ id: 'a', cantidad: 1, unitario: 0.1 }),
+        linea({ id: 'b', cantidad: 1, unitario: 0.2 }),
+      ],
+      0,
+      'USD',
+    );
+
+    expect(totales.total).toBe(0.3);
+  });
+
+  it('el margen se calcula en pesos, que es donde está el costo', () => {
+    // 0,87 USD a 4.000 son 3.480 pesos, contra un costo de 200: 94 %. Sin
+    // convertir, comparar 0,87 con 200 daría un margen negativo inventado.
+    const margen = margenDeLinea(precinto, linea({ unitario: 0.87 }), enDolares);
+
+    expect(margen).toBeCloseTo(0.9425, 4);
+    expect(margenDeLinea(precinto, linea({ unitario: 0.87 }))).toBeLessThan(0);
+  });
+});
+
 describe('margenDeLinea', () => {
   it('calcula el margen contra el costo de compra', () => {
     expect(margenDeLinea(precinto, linea())).toBeCloseTo(0.5, 5);

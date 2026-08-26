@@ -8,6 +8,8 @@ const base: Cotizacion = {
   fecha: '2026-08-13',
   asesor: 'Yeimy Mahecha',
   iva: 0.19,
+  moneda: 'COP',
+  tasa: 1,
   catalogoVersion: 'prueba',
   cliente: {
     empresa: 'SERVIHORIZONTAL',
@@ -78,6 +80,24 @@ describe('mensajeWhatsapp', () => {
 
   it('declara la moneda: el «$» a secas no distingue peso de dólar', () => {
     expect(mensaje).toContain('pesos colombianos (COP)');
+  });
+
+  it('en dólares dice la moneda con su símbolo y la tasa pactada', () => {
+    const enDolares = {
+      ...base,
+      moneda: 'USD' as const,
+      tasa: 4100,
+      lineas: [{ ...base.lineas[0]!, unitario: 0.12 }],
+    };
+    const texto = mensajeWhatsapp(enDolares, 0.19);
+
+    // «US$» y no «$»: es la diferencia entre doce centavos y doce centavos de
+    // peso, o sea entre una oferta y otra cuatro mil veces mayor.
+    expect(texto).toContain('US$ 0,12');
+    expect(texto).toContain('dólares estadounidenses (USD)');
+    // La tasa va escrita, para poder reconstruir la cifra en pesos meses
+    // después, cuando el dólar ya esté en otro sitio.
+    expect(texto).toContain('1 USD = $ 4.100 COP');
   });
 });
 

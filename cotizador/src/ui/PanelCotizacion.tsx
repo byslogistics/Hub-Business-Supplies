@@ -1,8 +1,9 @@
 /** Datos del cliente, condiciones comerciales y totales. */
 
-import { CIUDADES_CON_FLETE, ASESORES } from '../datos/empresa';
+import { CIUDADES_CON_FLETE, ASESORES, TASA_USD_SUGERIDA } from '../datos/empresa';
 import { NOTAS_FRECUENTES, PLANTILLAS } from '../datos/condiciones';
-import { fechaLarga, pesos, sumarDias, unidades } from '../dominio/formato';
+import { dinero, fechaLarga, pesos, sumarDias, unidades } from '../dominio/formato';
+import { EN_PESOS, type Cambio, type Moneda } from '../dominio/moneda';
 import type { Cotizacion, FormaPago, TotalesCotizacion } from '../dominio/tipos';
 import { CampoNumero, CampoSelect, CampoTexto, Seccion } from './componentes';
 import type { Despachar } from './useCotizacion';
@@ -81,8 +82,9 @@ export function DatosCliente({
 /**
  * Tratamientos de IVA de uso corriente. El valor es la fracción que se guarda
  * en la cotización; `null` significa «otra tarifa», que abre el campo libre
- * para un régimen distinto. Sólo cambia el impuesto: la cotización se emite
- * siempre en pesos colombianos.
+ * para un régimen distinto. Sólo cambia el impuesto: la moneda se elige aparte
+ * y las dos decisiones no se implican, aunque una exportación suela llevar
+ * las dos.
  */
 const TRATAMIENTOS: readonly { clave: string; texto: string; tarifa: number | null }[] = [
   { clave: 'nacional', texto: 'Venta nacional · IVA 19%', tarifa: 0.19 },
@@ -174,12 +176,87 @@ export function DatosOferta({
         ) : null}
       </div>
 
+      <Divisa cotizacion={cotizacion} despachar={despachar} />
+
       <p className="mt-2 text-xs text-neutral-500">
-        La tarifa queda guardada en esta cotización. Si el IVA cambia más adelante, lo ya emitido
-        conserva sus totales.
+        La tarifa y la moneda quedan guardadas en esta cotización. Si el IVA o el dólar cambian
+        más adelante, lo ya emitido conserva sus totales.
       </p>
     </Seccion>
   );
+}
+
+/**
+ * En qué moneda va la cotización, y a qué tasa.
+ *
+ * El listado de precios está en pesos y sigue estándolo: elegir dólares
+ * **convierte** los precios de las líneas con la tasa que se escriba aquí, y
+ * esa tasa se guarda dentro de la cotización. Por eso el campo pide la TRM
+ * pactada y no la va a buscar a ningún sitio: la que importa es la que se
+ * acordó con el cliente, no la de hoy.
+ */
+function Divisa({
+  cotizacion,
+  despachar,
+}: {
+  cotizacion: Cotizacion;
+  despachar: Despachar;
+}) {
+  const enDolares = cotizacion.moneda === 'USD';
+
+  const cambiar = (cambio: Cambio) => despachar({ tipo: 'cambiarDivisa', cambio });
+
+  return (
+    <>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2">
+          <CampoSelect
+            etiqueta="Moneda"
+            value={cotizacion.moneda}
+            onChange={(e) => {
+              const moneda = e.currentTarget.value as Moneda;
+              if (moneda === cotizacion.moneda) return;
+              // Al volver a pesos la tasa deja de significar nada y se
+              // devuelve a 1; al pasar a dólares se arranca de la última
+              // escrita, o de la sugerida si es la primera vez.
+              cambiar(
+                moneda === 'COP'
+                  ? EN_PESOS
+                  : { moneda: 'USD', tasa: tasaUtil(cotizacion.tasa) },
+              );
+            }}
+          >
+            <option value="COP">Pesos colombianos · COP</option>
+            <option value="USD">Dólares · USD</option>
+          </CampoSelect>
+        </div>
+
+        {enDolares ? (
+          <CampoNumero
+            etiqueta="TRM pactada"
+            aria-label="Pesos por un dólar"
+            valor={cotizacion.tasa}
+            minimo={1}
+            step={1}
+            alCambiar={(tasa) => cambiar({ moneda: 'USD', tasa: tasaUtil(tasa) })}
+          />
+        ) : null}
+      </div>
+
+      {enDolares ? (
+        <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Los precios del listado están en pesos y se convierten a{' '}
+          <strong>{pesos(cotizacion.tasa)} por dólar</strong>. Confirme la TRM antes de emitir: el
+          PDF la imprime y es la que va a regir la oferta.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/** Una tasa con la que se pueda dividir. Cero o negativa no es una tasa. */
+function tasaUtil(valor: number): number {
+  return Number.isFinite(valor) && valor > 0 ? valor : TASA_USD_SUGERIDA;
 }
 
 export function PanelCondiciones({
@@ -324,16 +401,26 @@ export function PanelCondiciones({
   );
 }
 
-export function ResumenTotales({ totales, iva }: { totales: TotalesCotizacion; iva: number }) {
+export function ResumenTotales({
+  totales,
+  iva,
+  cambio = EN_PESOS,
+}: {
+  totales: TotalesCotizacion;
+  iva: number;
+  cambio?: Cambio;
+}) {
+  const importe = (valor: number) => dinero(valor, cambio.moneda);
+
   const filas: [string, string][] = [
-    ['Subtotal', pesos(totales.bruto)],
+    ['Subtotal', importe(totales.bruto)],
     ...(totales.descuento > 0
-      ? ([['Descuento', `- ${pesos(totales.descuento)}`]] as [string, string][])
+      ? ([['Descuento', `- ${importe(totales.descuento)}`]] as [string, string][])
       : []),
     // Con tarifa cero la fila del IVA sólo confunde: se sustituye por una
     // línea que dice por qué no lo lleva.
     ...(iva > 0
-      ? ([[`IVA ${redondear(iva * 100)}%`, pesos(totales.iva)]] as [string, string][])
+      ? ([[`IVA ${redondear(iva * 100)}%`, importe(totales.iva)]] as [string, string][])
       : []),
   ];
 
@@ -349,11 +436,17 @@ export function ResumenTotales({ totales, iva }: { totales: TotalesCotizacion; i
       </dl>
       <div className="flex items-baseline justify-between bg-marca-950 px-5 py-3.5 text-white">
         <span className="text-sm font-bold">TOTAL</span>
-        <span className="text-xl font-bold">{pesos(totales.total)}</span>
+        <span className="text-xl font-bold">{importe(totales.total)}</span>
       </div>
       <p className="px-5 py-2 text-xs text-neutral-500">
         {unidades(totales.unidades)} unidades en total
         {iva > 0 ? null : ' · operación sin IVA'}
+        {/* El equivalente en pesos es para quien cotiza, no para el cliente:
+            no sale en el PDF. Es lo que deja comparar de un vistazo con lo que
+            costaría la misma oferta en pesos. */}
+        {cambio.moneda === 'USD'
+          ? ` · equivalen a ${pesos(Math.round(totales.total * cambio.tasa))}`
+          : null}
       </p>
     </div>
   );

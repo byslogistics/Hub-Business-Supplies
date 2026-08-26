@@ -19,16 +19,22 @@
  */
 
 import {
+  esMoneda,
   formatoNumero,
+  MAXIMO_SELECCION,
   mismoCliente,
   POR_PAGINA,
   type CotizacionGuardada,
+  type Cuantas,
   type ErrorApi,
   type Estado,
   type FiltroHistorial,
+  type Moneda,
   type PaginaHistorial,
   type ResumenCotizacion,
+  type Seleccion,
 } from '../compartido/historial';
+import { cambioDe } from '../cotizador/src/dominio/moneda';
 import { totalesDeCotizacion } from '../cotizador/src/dominio/precios';
 import type { Cotizacion } from '../cotizador/src/dominio/tipos';
 import { identificar, SinAcceso } from './acceso';
@@ -104,6 +110,19 @@ async function enrutar(
   if (ruta === 'cotizaciones') {
     if (metodo === 'GET') return json(await listar(env.BASE, filtroDe(url)));
     if (metodo === 'POST') return json(await registrar(env.BASE, peticion, correo, null));
+  }
+
+  // Las operaciones en bloque van antes que la ruta de detalle: son POST y
+  // aquélla sólo atiende GET y PUT, pero tenerlas juntas evita que mañana
+  // alguien añada un POST al detalle y se pisen sin que nadie lo note.
+  if (metodo === 'POST' && ruta === 'cotizaciones/eliminar') {
+    return json(await eliminar(env.BASE, await leerSeleccion(peticion), correo));
+  }
+  if (metodo === 'POST' && ruta === 'cotizaciones/restaurar') {
+    return json(await restaurar(env.BASE, await leerSeleccion(peticion)));
+  }
+  if (metodo === 'POST' && ruta === 'cotizaciones/purgar') {
+    return json(await purgar(env.BASE, await leerSeleccion(peticion)));
   }
 
   const detalle = /^cotizaciones\/([^/]+)$/.exec(ruta);
@@ -342,6 +361,7 @@ async function registrar(
 ): Promise<{ numero: string; emitidaEn: string }> {
   const documento = await leerDocumento(peticion);
   const emitidaEn = new Date().toISOString();
+  const cambio = cambioDe(documento);
 
   // Con número dado hay que mirar antes si ese número ya es de alguien: el
   // `ON CONFLICT` de abajo actualiza en silencio, y en silencio es justo como
@@ -350,7 +370,12 @@ async function registrar(
 
   const numero = numeroDado ?? (await siguienteNumero(base, documento.fecha));
 
-  const totales = totalesDeCotizacion(documento.lineas, documento.iva);
+  const totales = totalesDeCotizacion(documento.lineas, documento.iva, cambio.moneda);
+  // Dos cifras y no una: la del documento, en su moneda, y su equivalente en
+  // pesos, que es con el que el historial suma y ordena. Las dos se calculan
+  // aquí a partir del documento, igual que antes: nada que llegue calculado
+  // desde el navegador entra en la base.
+  const totalEnPesos = Math.round(totales.total * cambio.tasa);
 
   // `INSERT OR REPLACE` no vale: se llevaría por delante el estado y la nota
   // de una cotización ya marcada como aceptada. Sólo se refresca lo que
@@ -360,8 +385,8 @@ async function registrar(
       `INSERT INTO cotizaciones (
          numero, fecha, emitida_en, autor, asesor,
          cliente_empresa, cliente_nit, cliente_contacto,
-         total, unidades, catalogo_version, documento
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         total, total_divisa, moneda, tasa, unidades, catalogo_version, documento
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(numero) DO UPDATE SET
          fecha            = excluded.fecha,
          asesor           = excluded.asesor,
@@ -369,9 +394,17 @@ async function registrar(
          cliente_nit      = excluded.cliente_nit,
          cliente_contacto = excluded.cliente_contacto,
          total            = excluded.total,
+         total_divisa     = excluded.total_divisa,
+         moneda           = excluded.moneda,
+         tasa             = excluded.tasa,
          unidades         = excluded.unidades,
          catalogo_version = excluded.catalogo_version,
-         documento        = excluded.documento`,
+         documento        = excluded.documento,
+         -- Volver a emitir una cotización que estaba en la papelera la saca
+         -- de ella: lo que acaba de salir hacia un cliente no puede quedarse
+         -- escondido en el historial.
+         eliminada_en     = NULL,
+         eliminada_por    = NULL`,
     )
     .bind(
       numero,
@@ -382,7 +415,10 @@ async function registrar(
       documento.cliente?.empresa ?? '',
       documento.cliente?.nit ?? '',
       documento.cliente?.contacto ?? '',
-      Math.round(totales.total),
+      totalEnPesos,
+      totales.total,
+      cambio.moneda,
+      cambio.tasa,
       Math.round(totales.unidades),
       documento.catalogoVersion ?? '',
       JSON.stringify({ ...documento, numero }),
@@ -419,7 +455,7 @@ async function comprobarNumeroLibre(
   documento: Cotizacion,
 ): Promise<void> {
   const fila = await base
-    .prepare('SELECT cliente_empresa, cliente_nit FROM cotizaciones WHERE numero = ?')
+    .prepare('SELECT cliente_empresa, cliente_nit, eliminada_en FROM cotizaciones WHERE numero = ?')
     .bind(numero)
     .first<Record<string, unknown>>();
 
@@ -440,10 +476,13 @@ async function comprobarNumeroLibre(
   }
 
   const dueno = empresa.trim();
+  // Que esté en la papelera no libera el número, pero callarlo dejaría a
+  // quien lo escribió buscando en el historial una cotización que no sale.
+  const donde = fila.eliminada_en ? ' (está en la papelera)' : '';
   throw new ErrorPeticion(
     409,
     'numero-ocupado',
-    `El número ${numero} ya es de una cotización${dueno ? ` de ${dueno}` : ''}. ` +
+    `El número ${numero} ya es de una cotización${dueno ? ` de ${dueno}` : ''}${donde}. ` +
       'Verifique el número, o deje el campo vacío para que se asigne el siguiente.',
   );
 }
@@ -501,6 +540,20 @@ async function leerDocumento(peticion: Request): Promise<Cotizacion> {
   if (!Number.isFinite(documento.iva)) {
     throw new ErrorPeticion(400, 'invalida', 'La cotización no trae tarifa de IVA.');
   }
+  // La moneda puede faltar —las emitidas antes de que existiera no la traen, y
+  // eran todas en pesos—, pero si viene tiene que ser una de las dos, y una en
+  // dólares sin tasa utilizable no se puede guardar: su equivalente en pesos
+  // sería cero y el historial la sumaría como si no valiera nada.
+  if (documento.moneda !== undefined && !esMoneda(documento.moneda)) {
+    throw new ErrorPeticion(400, 'invalida', 'Esa moneda no existe.');
+  }
+  if (documento.moneda === 'USD' && !(Number(documento.tasa) > 0)) {
+    throw new ErrorPeticion(
+      400,
+      'invalida',
+      'Una cotización en dólares necesita la tasa de cambio con la que se hizo.',
+    );
+  }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(documento.fecha ?? '')) {
     throw new ErrorPeticion(400, 'invalida', 'La fecha de la cotización no es válida.');
   }
@@ -512,22 +565,55 @@ async function leerDocumento(peticion: Request): Promise<Cotizacion> {
 
 function filtroDe(url: URL): FiltroHistorial {
   const p = url.searchParams;
-  const estado = p.get('estado');
+  return filtroSeguro({
+    texto: p.get('texto') ?? undefined,
+    estado: (p.get('estado') ?? undefined) as FiltroHistorial['estado'],
+    desde: p.get('desde') ?? undefined,
+    hasta: p.get('hasta') ?? undefined,
+    pagina: Number(p.get('pagina')) || 1,
+    papelera: p.get('papelera') === '1',
+  });
+}
+
+/**
+ * Deja un filtro en algo que se pueda meter en una consulta.
+ *
+ * Lo usan los dos caminos por los que llega un filtro: la dirección del
+ * listado y el cuerpo de una operación en bloque. El segundo es el que obliga
+ * a que esto exista aparte — ahí el filtro viene de un JSON, y de un JSON
+ * puede venir cualquier cosa. Los valores se acaban pasando como parámetros
+ * enlazados, nunca concatenados, pero un `estado` inventado o una fecha
+ * absurda tampoco deben llegar a la consulta.
+ */
+function filtroSeguro(crudo: Partial<FiltroHistorial> | null | undefined): FiltroHistorial {
+  const estado = crudo?.estado;
   return {
-    texto: p.get('texto')?.trim() || undefined,
-    estado: estado === 'emitida' || estado === 'aceptada' || estado === 'perdida' ? estado : undefined,
-    desde: fechaValida(p.get('desde')),
-    hasta: fechaValida(p.get('hasta')),
-    pagina: Math.max(1, Number(p.get('pagina')) || 1),
+    texto: typeof crudo?.texto === 'string' ? crudo.texto.trim() || undefined : undefined,
+    estado:
+      estado === 'emitida' || estado === 'aceptada' || estado === 'perdida' ? estado : undefined,
+    desde: fechaValida(crudo?.desde),
+    hasta: fechaValida(crudo?.hasta),
+    pagina: Math.max(1, Number(crudo?.pagina) || 1),
+    papelera: crudo?.papelera === true,
   };
 }
 
-function fechaValida(valor: string | null): string | undefined {
+function fechaValida(valor: string | null | undefined): string | undefined {
   return valor && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor : undefined;
 }
 
-async function listar(base: D1Database, filtro: FiltroHistorial): Promise<PaginaHistorial> {
-  const condiciones: string[] = [];
+/**
+ * El `WHERE` que corresponde a un filtro, con sus valores enlazados.
+ *
+ * Está aparte porque lo comparten el listado y las operaciones en bloque:
+ * «eliminar todas las que cumplen el filtro» tiene que alcanzar exactamente
+ * las filas que la persona está viendo, y la única forma de garantizarlo es
+ * que las dos consultas se armen con el mismo código.
+ */
+function dondeDe(filtro: FiltroHistorial): { donde: string; valores: unknown[] } {
+  // La papelera nunca es opcional: o se listan las que están a la vista o las
+  // que están en ella, pero jamás las dos mezcladas.
+  const condiciones: string[] = [filtro.papelera ? 'eliminada_en IS NOT NULL' : 'eliminada_en IS NULL'];
   const valores: unknown[] = [];
 
   if (filtro.texto) {
@@ -553,7 +639,11 @@ async function listar(base: D1Database, filtro: FiltroHistorial): Promise<Pagina
     valores.push(`${filtro.hasta}T23:59:59.999Z`);
   }
 
-  const donde = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+  return { donde: `WHERE ${condiciones.join(' AND ')}`, valores };
+}
+
+async function listar(base: D1Database, filtro: FiltroHistorial): Promise<PaginaHistorial> {
+  const { donde, valores } = dondeDe(filtro);
   const pagina = Math.max(1, filtro.pagina ?? 1);
 
   const [resumen, filas] = await base.batch<Record<string, unknown>>([
@@ -564,7 +654,9 @@ async function listar(base: D1Database, filtro: FiltroHistorial): Promise<Pagina
       .prepare(
         `SELECT numero, fecha, emitida_en, autor, asesor,
                 cliente_empresa, cliente_nit, cliente_contacto,
-                total, unidades, estado, estado_nota, estado_en, estado_por
+                total, total_divisa, moneda, tasa,
+                unidades, estado, estado_nota, estado_en, estado_por,
+                eliminada_en, eliminada_por
            FROM cotizaciones ${donde}
           ORDER BY emitida_en DESC
           LIMIT ? OFFSET ?`,
@@ -631,6 +723,117 @@ async function marcar(
   return { hecho: true };
 }
 
+// --- Papelera ---------------------------------------------------------------
+
+/**
+ * Lee del cuerpo qué cotizaciones alcanza la operación.
+ *
+ * Dos formas, y la segunda existe por el caso real: con mil cotizaciones
+ * guardadas, mandar mil números por el cable para borrarlas no es una forma
+ * de borrar. `{ todas: true, filtro }` deja que la condición la resuelva la
+ * base con el mismo `WHERE` del listado.
+ */
+async function leerSeleccion(peticion: Request): Promise<Seleccion> {
+  const cuerpo = (await peticion.json().catch(() => null)) as
+    | { numeros?: unknown; todas?: unknown; filtro?: unknown }
+    | null;
+
+  if (!cuerpo || typeof cuerpo !== 'object') {
+    throw new ErrorPeticion(400, 'invalida', 'El cuerpo no es JSON válido.');
+  }
+
+  if (cuerpo.todas === true) {
+    return { todas: true, filtro: filtroSeguro(cuerpo.filtro as Partial<FiltroHistorial>) };
+  }
+
+  const numeros = Array.isArray(cuerpo.numeros)
+    ? cuerpo.numeros.filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+    : [];
+
+  if (numeros.length === 0) {
+    throw new ErrorPeticion(400, 'invalida', 'No se indicó ninguna cotización.');
+  }
+  if (numeros.length > MAXIMO_SELECCION) {
+    throw new ErrorPeticion(
+      400,
+      'invalida',
+      `No se pueden tocar más de ${MAXIMO_SELECCION} cotizaciones de una vez por número. ` +
+        'Use el filtro y «seleccionar todas».',
+    );
+  }
+
+  return { numeros };
+}
+
+/**
+ * A qué filas llega la operación, según de dónde vengan.
+ *
+ * `papelera` no lo decide quien llama: lo decide la operación. Eliminar sólo
+ * puede tocar lo que está a la vista y restaurar o purgar sólo lo que ya está
+ * en la papelera, y así una selección hecha en una pantalla no puede acabar
+ * aplicándose sobre la otra.
+ */
+function alcanceDe(seleccion: Seleccion, papelera: boolean): { donde: string; valores: unknown[] } {
+  if ('todas' in seleccion) {
+    return dondeDe({ ...seleccion.filtro, papelera });
+  }
+
+  const huecos = seleccion.numeros.map(() => '?').join(', ');
+  return {
+    donde: `WHERE ${papelera ? 'eliminada_en IS NOT NULL' : 'eliminada_en IS NULL'} AND numero IN (${huecos})`,
+    valores: [...seleccion.numeros],
+  };
+}
+
+/**
+ * Manda cotizaciones a la papelera.
+ *
+ * No borra nada: pone fecha y autor de retirada, y desde ese momento dejan de
+ * salir en el historial. El número sigue ocupado —el consecutivo no retrocede
+ * nunca— y el documento sigue entero, que es lo que permite deshacerlo.
+ */
+async function eliminar(base: D1Database, seleccion: Seleccion, correo: string): Promise<Cuantas> {
+  const { donde, valores } = alcanceDe(seleccion, false);
+
+  const resultado = await base
+    .prepare(`UPDATE cotizaciones SET eliminada_en = ?, eliminada_por = ? ${donde}`)
+    .bind(new Date().toISOString(), correo, ...valores)
+    .run();
+
+  return { cuantas: resultado.meta.changes ?? 0 };
+}
+
+/** Las saca de la papelera. Vuelven al historial tal como estaban. */
+async function restaurar(base: D1Database, seleccion: Seleccion): Promise<Cuantas> {
+  const { donde, valores } = alcanceDe(seleccion, true);
+
+  const resultado = await base
+    .prepare(`UPDATE cotizaciones SET eliminada_en = NULL, eliminada_por = NULL ${donde}`)
+    .bind(...valores)
+    .run();
+
+  return { cuantas: resultado.meta.changes ?? 0 };
+}
+
+/**
+ * Borra de verdad, y sólo lo que ya está en la papelera.
+ *
+ * El paso previo por la papelera no es una molestia inventada: es lo que
+ * convierte «seleccioné trescientas sin querer» en algo que se deshace. Aquí
+ * ya no — de esto no se vuelve, y por eso `alcanceDe` fuerza que la fila esté
+ * retirada aunque quien llame diga otra cosa.
+ */
+async function purgar(base: D1Database, seleccion: Seleccion): Promise<Cuantas> {
+  const { donde, valores } = alcanceDe(seleccion, true);
+
+  const resultado = await base
+    .prepare(`DELETE FROM cotizaciones ${donde}`)
+    .bind(...valores)
+    .run();
+
+  return { cuantas: resultado.meta.changes ?? 0 };
+}
+
 function aResumen(fila: Record<string, unknown>): ResumenCotizacion {
   return {
     numero: String(fila.numero),
@@ -642,11 +845,20 @@ function aResumen(fila: Record<string, unknown>): ResumenCotizacion {
     nit: String(fila.cliente_nit ?? ''),
     contacto: String(fila.cliente_contacto ?? ''),
     total: Number(fila.total ?? 0),
+    // `?? ` no basta: la columna se añadió con `DEFAULT 0`, así que una fila
+    // escrita entre la migración y el despliegue del código nuevo trae un cero
+    // de verdad, no un nulo, y se enseñaría como «$ 0» en el listado. Esas
+    // filas son de antes de las divisas y su total en moneda es su total.
+    totalMoneda: Number(fila.total_divisa) || Number(fila.total ?? 0),
+    moneda: esMoneda(fila.moneda) ? (fila.moneda as Moneda) : 'COP',
+    tasa: Number(fila.tasa) > 0 ? Number(fila.tasa) : 1,
     unidades: Number(fila.unidades ?? 0),
     estado: (fila.estado as Estado) ?? 'emitida',
     estadoNota: String(fila.estado_nota ?? ''),
     estadoEn: fila.estado_en ? String(fila.estado_en) : null,
     estadoPor: fila.estado_por ? String(fila.estado_por) : null,
+    eliminadaEn: fila.eliminada_en ? String(fila.eliminada_en) : null,
+    eliminadaPor: fila.eliminada_por ? String(fila.eliminada_por) : null,
   };
 }
 

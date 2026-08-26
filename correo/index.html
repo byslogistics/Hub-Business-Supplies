@@ -68,6 +68,30 @@
         a { color: var(--brand-300); }
       }
 
+      /* Barra de arriba: el enlace de vuelta a la izquierda y la vista previa
+         a la derecha. Va pegada al borde superior (`sticky`) y a todo el
+         ancho de la ventana — con un ancho limitado, el formulario se vería
+         pasar por los lados al bajar. */
+      .barra-superior {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        border-bottom: 1px solid var(--borde);
+        background: var(--fondo);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .barra-interior {
+        max-width: 84rem;
+        margin: 0 auto;
+        padding: 0.7rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
       header.cabecera {
         max-width: 84rem;
         margin: 0 auto;
@@ -310,19 +334,22 @@
       /*
        * La vista previa no vive en la pantalla junto al formulario — el
        * constructor necesita todo el espacio. Vive escondida (display:none)
-       * hasta que se abre con el botón flotante, y entonces ocupa toda la
-       * ventana, como el botón "Vista previa" del cotizador.
+       * hasta que se abre con el botón de la barra de arriba, y entonces ocupa
+       * toda la ventana, como el botón "Vista previa" del cotizador.
+       *
+       * El botón está arriba a la derecha, dentro de la barra, y no flotando
+       * en la esquina de abajo: ahí tapaba el final del formulario —justo
+       * donde están los adjuntos y el botón de enviar— y en el celular
+       * quedaba encima del último campo. Arriba está siempre visible sin
+       * taparle nada a nadie, y en la misma esquina en la que el cotizador
+       * tiene el suyo.
        */
 
-      .boton-flotante-previa {
-        position: fixed;
-        right: 1.5rem;
-        bottom: 1.5rem;
-        z-index: 100;
+      .boton-previa {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.85rem 1.3rem;
+        padding: 0.6rem 1.1rem;
         border: none;
         border-radius: 999px;
         background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
@@ -330,7 +357,25 @@
         font-size: 0.9375rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap;
+        box-shadow: var(--sombra);
+      }
+
+      .boton-previa:hover {
         box-shadow: var(--sombra-alta);
+      }
+
+      /* En pantallas estrechas el rótulo estorba: el ojo ya dice qué hace, y
+         el botón deja de competir por el ancho con el enlace de vuelta. */
+      @media (max-width: 26rem) {
+        .boton-previa span {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip-path: inset(50%);
+          white-space: nowrap;
+        }
       }
 
       /* Fondo SÓLIDO (--superficie, no --fondo-tarjeta) — esto es una
@@ -444,18 +489,30 @@
   </head>
 
   <body>
+    <div class="barra-superior">
+      <div class="barra-interior">
+        <a class="volver" href="../">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
+          </svg>
+          Centro de herramientas
+        </a>
+        <button type="button" class="boton-previa" id="boton-abrir-previa">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" /><circle cx="12" cy="12" r="3" />
+          </svg>
+          <span>Vista previa</span>
+        </button>
+      </div>
+    </div>
+
     <header class="cabecera">
-      <a class="volver" href="../">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
-        </svg>
-        Centro de herramientas
-      </a>
       <h1>Enviar correo comercial</h1>
       <p class="intro">
         Elige quién lo firma y qué plantilla usar, llena los datos del cliente, adjunta un archivo
-        si hace falta, y cuando quieras ver cómo va quedando dale al botón «Vista previa». Al darle
-        «Enviar» sale de una vez, con la firma y el diseño de B&amp;S Logistics ya puestos.
+        si hace falta, y cuando quieras ver cómo va quedando dale al botón «Vista previa» de arriba
+        a la derecha. Al darle «Enviar» sale de una vez, con la firma y el diseño de
+        B&amp;S Logistics ya puestos.
       </p>
     </header>
 
@@ -553,13 +610,6 @@
           <div class="estado" id="estado" role="status"></div>
         </form>
       </main>
-
-      <button type="button" class="boton-flotante-previa" id="boton-abrir-previa">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" /><circle cx="12" cy="12" r="3" />
-        </svg>
-        Vista previa
-      </button>
 
       <div class="panel previsualizacion" id="previsualizacion" data-ancho="escritorio">
         <button type="button" class="boton-cerrar-previa" id="boton-cerrar-previa" aria-label="Cerrar vista previa">

@@ -86,6 +86,13 @@
       hover:border-marca-400 hover:text-marca-700;
   }
 
+  /* Rojo y sólo para lo que no se puede deshacer: borrar de la papelera.
+     Mandar a la papelera comparte el color porque quien mira la fila tiene
+     que ver de un vistazo cuál de los dos botones se lleva algo. */
+  .boton-peligro {
+    @apply boton bg-red-600 text-white shadow-lg shadow-red-600/25 hover:bg-red-700;
+  }
+
   .boton-whatsapp {
     @apply boton bg-[#25d366] text-white shadow-lg shadow-[#25d366]/25
       hover:bg-[#1eb457];

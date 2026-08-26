@@ -13,13 +13,14 @@ import autoTable from 'jspdf-autotable';
 import { AGRADECIMIENTO } from '../datos/condiciones';
 import { EMPRESA } from '../datos/empresa';
 import {
+  dinero,
+  dineroSinSimbolo,
   fechaLarga,
-  MONEDA_DECLARADA,
-  pesos,
-  pesosSinSimbolo,
+  monedaDeclarada,
   sumarDias,
   unidades,
 } from '../dominio/formato';
+import { cambioDe, type Cambio } from '../dominio/moneda';
 import { totalesDeCotizacion, totalesDeLinea } from '../dominio/precios';
 import type { Cotizacion } from '../dominio/tipos';
 import { campo, escribir, panel, regla, relleno, rotulo, tinta } from './documento';
@@ -53,12 +54,15 @@ export function construirPdf(cotizacion: Cotizacion, opciones: OpcionesPdf = {})
   // La tarifa sale del documento, no del catálogo: una cotización emitida
   // conserva sus totales aunque el IVA cambie después.
   const iva = cotizacion.iva;
-  const totales = totalesDeCotizacion(cotizacion.lineas, iva);
+  // La moneda sale del documento por lo mismo que la tarifa: una cotización
+  // emitida en dólares a 4.100 sigue diciendo eso mismo dentro de un año.
+  const cambio = cambioDe(cotizacion);
+  const totales = totalesDeCotizacion(cotizacion.lineas, iva, cambio.moneda);
   const hayDescuento = totales.descuento > 0;
 
   let y = bloqueDatos(doc, cotizacion, Y_CONTENIDO);
-  y = tablaDeItems(doc, cotizacion, iva, hayDescuento, y);
-  y = bloqueTotales(doc, totales, hayDescuento, iva, y);
+  y = tablaDeItems(doc, cotizacion, iva, cambio, hayDescuento, y);
+  y = bloqueTotales(doc, totales, hayDescuento, iva, cambio, y);
   y = bloqueCondiciones(doc, cotizacion, y);
   bloqueCierre(doc, cotizacion, y);
 
@@ -251,6 +255,7 @@ function tablaDeItems(
   doc: jsPDF,
   cotizacion: Cotizacion,
   iva: number,
+  cambio: Cambio,
   hayDescuento: boolean,
   y: number,
 ): number {
@@ -258,20 +263,22 @@ function tablaDeItems(
     '#',
     'Descripción',
     'Cant.',
-    'Vr. unitario',
+    // La moneda va en el encabezado además de en la declaración de abajo: es
+    // donde mira quien recorre la tabla con el dedo.
+    `Vr. unitario (${cambio.moneda})`,
     ...(hayDescuento ? ['Dcto.'] : []),
-    'Valor total',
+    `Valor total (${cambio.moneda})`,
   ];
 
   const cuerpo = cotizacion.lineas.map((linea, indice) => {
-    const t = totalesDeLinea(linea, iva);
+    const t = totalesDeLinea(linea, iva, cambio.moneda);
     return [
       String(indice + 1),
       descripcionDeLinea(linea),
       unidades(linea.cantidad),
-      pesosSinSimbolo(linea.unitario),
+      dineroSinSimbolo(linea.unitario, cambio.moneda),
       ...(hayDescuento ? [linea.descuento ? `${linea.descuento}%` : '—'] : []),
-      pesosSinSimbolo(t.subtotal),
+      dineroSinSimbolo(t.subtotal, cambio.moneda),
     ];
   });
 
@@ -356,19 +363,21 @@ function bloqueTotales(
   totales: ReturnType<typeof totalesDeCotizacion>,
   hayDescuento: boolean,
   iva: number,
+  cambio: Cambio,
   y: number,
 ): number {
   const ancho = 78;
   const x = HOJA.ancho - HOJA.margen - ancho;
+  const importe = (valor: number) => dinero(valor, cambio.moneda);
   const filas: [string, string][] = [
-    ['Subtotal', pesos(totales.bruto)],
+    ['Subtotal', importe(totales.bruto)],
     ...(hayDescuento
-      ? ([['Descuento', `- ${pesos(totales.descuento)}`]] as [string, string][])
+      ? ([['Descuento', `- ${importe(totales.descuento)}`]] as [string, string][])
       : []),
     // Una fila «IVA 0%: $ 0» parece un error de cálculo. Cuando la operación
     // no lleva IVA se dice con palabras, bajo el total.
     ...(iva > 0
-      ? ([[`IVA ${Math.round(iva * 10000) / 100}%`, pesos(totales.iva)]] as [string, string][])
+      ? ([[`IVA ${Math.round(iva * 10000) / 100}%`, importe(totales.iva)]] as [string, string][])
       : []),
   ];
 
@@ -389,9 +398,12 @@ function bloqueTotales(
   // atiende también Panamá, y el peso y el dólar comparten símbolo—, y en las
   // celdas de la tabla ni siquiera aparece: el número va solo. Quien recibe
   // una oferta no tiene por qué averiguar en qué moneda está.
-  escribir(doc, MONEDA_DECLARADA, HOJA.margen, yActual + 10, {
+  escribir(doc, monedaDeclarada(cambio), HOJA.margen, yActual + 10, {
     tamano: 7.5,
     color: COLOR.textoSuave,
+    // En dólares la declaración lleva además la tasa y no cabe en una línea:
+    // se le da el ancho que queda a la izquierda del bloque de totales.
+    ancho: ANCHO_UTIL - ancho - 6,
   });
 
   for (const [etiqueta, valor] of filas) {
@@ -412,7 +424,7 @@ function bloqueTotales(
     color: COLOR.blanco,
     negrita: true,
   });
-  escribir(doc, pesos(totales.total), x + ancho - 4, yActual + 7.6, {
+  escribir(doc, importe(totales.total), x + ancho - 4, yActual + 7.6, {
     tamano: 12,
     color: COLOR.blanco,
     negrita: true,

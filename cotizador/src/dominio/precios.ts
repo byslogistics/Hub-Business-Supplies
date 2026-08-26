@@ -4,6 +4,7 @@
  * sin abrir un navegador (`src/dominio/precios.test.ts`).
  */
 
+import { EN_PESOS, redondear, type Cambio, type Moneda } from './moneda';
 import type {
   Escalon,
   Linea,
@@ -123,26 +124,35 @@ export function oportunidadDeVolumen(
   };
 }
 
-/** Redondeo a peso entero: en Colombia no se factura con centavos. */
-export function aPesos(valor: number): number {
-  return Math.round(valor);
-}
-
-export function totalesDeLinea(linea: Linea, iva: number): TotalesLinea {
-  const bruto = aPesos(linea.unitario * linea.cantidad);
-  const descuento = aPesos((bruto * clamp(linea.descuento, 0, 100)) / 100);
-  const subtotal = bruto - descuento;
-  const impuesto = aPesos(subtotal * iva);
-  return { bruto, descuento, subtotal, iva: impuesto, total: subtotal + impuesto };
+/**
+ * Cifras de una línea, redondeadas como admita la moneda.
+ *
+ * `moneda` decide sólo el redondeo —peso entero o centavo—, no la aritmética:
+ * el unitario ya viene en la moneda del documento. Por defecto pesos, que es
+ * como se cotizó siempre y como sigue viniendo todo lo que no diga otra cosa.
+ */
+export function totalesDeLinea(linea: Linea, iva: number, moneda: Moneda = 'COP'): TotalesLinea {
+  const bruto = redondear(linea.unitario * linea.cantidad, moneda);
+  const descuento = redondear((bruto * clamp(linea.descuento, 0, 100)) / 100, moneda);
+  const subtotal = redondear(bruto - descuento, moneda);
+  const impuesto = redondear(subtotal * iva, moneda);
+  return {
+    bruto,
+    descuento,
+    subtotal,
+    iva: impuesto,
+    total: redondear(subtotal + impuesto, moneda),
+  };
 }
 
 export function totalesDeCotizacion(
   lineas: readonly Linea[],
   iva: number,
+  moneda: Moneda = 'COP',
 ): TotalesCotizacion {
-  return lineas.reduce<TotalesCotizacion>(
+  const suma = lineas.reduce<TotalesCotizacion>(
     (acumulado, linea) => {
-      const t = totalesDeLinea(linea, iva);
+      const t = totalesDeLinea(linea, iva, moneda);
       return {
         bruto: acumulado.bruto + t.bruto,
         descuento: acumulado.descuento + t.descuento,
@@ -154,6 +164,19 @@ export function totalesDeCotizacion(
     },
     { bruto: 0, descuento: 0, subtotal: 0, iva: 0, total: 0, unidades: 0 },
   );
+
+  // Sumar centavos en coma flotante deja restos de la milésima —0,1 + 0,2 no
+  // da 0,3 en ningún lenguaje— y ese resto acaba impreso en el PDF. Cada
+  // sumando ya estaba redondeado; volver a redondear la suma la deja limpia
+  // sin cambiar ninguna cifra.
+  return {
+    ...suma,
+    bruto: redondear(suma.bruto, moneda),
+    descuento: redondear(suma.descuento, moneda),
+    subtotal: redondear(suma.subtotal, moneda),
+    iva: redondear(suma.iva, moneda),
+    total: redondear(suma.total, moneda),
+  };
 }
 
 /**
@@ -161,13 +184,19 @@ export function totalesDeCotizacion(
  *
  * Es información interna de apoyo a la negociación: se ve en pantalla y no
  * se imprime en ningún documento que salga al cliente.
+ *
+ * El costo del catálogo está en pesos y el unitario de la línea en la moneda
+ * del documento, así que la cuenta se hace en pesos: comparar 0,87 dólares
+ * con un costo de 2.100 pesos daría un margen catastrófico e inventado.
  */
 export function margenDeLinea(
   producto: Producto | undefined,
   linea: Linea,
+  cambio: Cambio = EN_PESOS,
 ): number | null {
-  if (!producto?.costoReferencia || linea.unitario <= 0) return null;
-  return (linea.unitario - producto.costoReferencia) / linea.unitario;
+  const unitarioEnPesos = linea.unitario * cambio.tasa;
+  if (!producto?.costoReferencia || unitarioEnPesos <= 0) return null;
+  return (unitarioEnPesos - producto.costoReferencia) / unitarioEnPesos;
 }
 
 function clamp(valor: number, minimo: number, maximo: number): number {

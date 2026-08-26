@@ -12,12 +12,15 @@ import { PLANTILLAS, type ClavePlantilla } from '../datos/condiciones';
 import { catalogo, productoPorId } from '../dominio/catalogo';
 import {
   actualizarLinea,
+  convertirCotizacion,
   cotizacionNueva,
   descartarBorrador,
   guardarBorrador,
   lineaDesdeProducto,
+  normalizar,
   recuperarBorrador,
 } from '../dominio/cotizacion';
+import { cambioDe, type Cambio } from '../dominio/moneda';
 import { totalesDeCotizacion } from '../dominio/precios';
 import { revisarCotizacion } from '../dominio/revision';
 import type { Cliente, Condiciones, Cotizacion, Linea, Producto } from '../dominio/tipos';
@@ -34,6 +37,8 @@ type Accion =
       tipo: 'editarCabecera';
       cambios: Partial<Pick<Cotizacion, 'asesor' | 'fecha' | 'numero' | 'iva'>>;
     }
+  /** Pasa la cotización a otra moneda, o a otra tasa dentro de la misma. */
+  | { tipo: 'cambiarDivisa'; cambio: Cambio }
   | { tipo: 'reiniciar' }
   | { tipo: 'numeroAsignado'; numero: string }
   | { tipo: 'cargar'; cotizacion: Cotizacion }
@@ -44,7 +49,10 @@ function reducir(estado: Cotizacion, accion: Accion): Cotizacion {
     case 'agregar': {
       // El mismo producto puede ir dos veces (con y sin logo, dos medidas),
       // así que se añade siempre una línea nueva en vez de sumar cantidades.
-      return { ...estado, lineas: [...estado.lineas, lineaDesdeProducto(accion.producto)] };
+      return {
+        ...estado,
+        lineas: [...estado.lineas, lineaDesdeProducto(accion.producto, {}, cambioDe(estado))],
+      };
     }
 
     case 'quitar':
@@ -55,7 +63,12 @@ function reducir(estado: Cotizacion, accion: Accion): Cotizacion {
         ...estado,
         lineas: estado.lineas.map((linea) =>
           linea.id === accion.id
-            ? actualizarLinea(linea, accion.cambios, productoPorId(linea.productoId))
+            ? actualizarLinea(
+                linea,
+                accion.cambios,
+                productoPorId(linea.productoId),
+                cambioDe(estado),
+              )
             : linea,
         ),
       };
@@ -100,20 +113,25 @@ function reducir(estado: Cotizacion, accion: Accion): Cotizacion {
       // cuando hay más de una persona cotizando.
       return { ...estado, numero: accion.numero };
 
+    case 'cambiarDivisa':
+      return convertirCotizacion(estado, accion.cambio);
+
     case 'cargar':
       // Una cotización traída del historial. Entra tal cual quedó emitida
-      // —con su número, su IVA y sus precios— y a partir de ahí se edita como
-      // cualquier otra; al volver a emitirla se actualiza la guardada.
-      return accion.cotizacion;
+      // —con su número, su IVA, su moneda y sus precios— y a partir de ahí se
+      // edita como cualquier otra; al volver a emitirla se actualiza la
+      // guardada. `normalizar` completa lo que las emitidas antiguas no traen.
+      return normalizar(accion.cotizacion);
 
     case 'actualizarPrecios': {
       // Vuelve a pedirle el precio al listado vigente en todas las líneas que
       // no lleven precio escrito a mano, y deja constancia de con qué versión
       // del catálogo quedó calculada la cotización.
+      const cambio = cambioDe(estado);
       const lineas = estado.lineas.map((linea) => {
         const producto = productoPorId(linea.productoId);
         if (!producto || linea.precioManual) return linea;
-        return actualizarLinea(linea, { precioManual: false }, producto);
+        return actualizarLinea(linea, { precioManual: false }, producto, cambio);
       });
       return { ...estado, lineas, catalogoVersion: catalogo.version };
     }
@@ -138,9 +156,12 @@ export function useCotizacion() {
     guardarBorrador(cotizacion);
   }, [cotizacion]);
 
+  /** La moneda de la cotización y su tasa, que casi todo lo demás necesita. */
+  const cambio = useMemo(() => cambioDe(cotizacion), [cotizacion.moneda, cotizacion.tasa]);
+
   const totales = useMemo(
-    () => totalesDeCotizacion(cotizacion.lineas, cotizacion.iva),
-    [cotizacion.lineas, cotizacion.iva],
+    () => totalesDeCotizacion(cotizacion.lineas, cotizacion.iva, cambio.moneda),
+    [cotizacion.lineas, cotizacion.iva, cambio.moneda],
   );
 
   /** Ids de productos ya presentes, para marcarlos en el catálogo. */
@@ -150,8 +171,8 @@ export function useCotizacion() {
   );
 
   const revision = useMemo(
-    () => revisarCotizacion(cotizacion.lineas, productoPorId),
-    [cotizacion.lineas],
+    () => revisarCotizacion(cotizacion.lineas, productoPorId, cambio),
+    [cotizacion.lineas, cambio],
   );
 
   /** Alertas indexadas por línea, para que cada tarjeta pinte las suyas. */
@@ -160,7 +181,7 @@ export function useCotizacion() {
     [revision],
   );
 
-  return { cotizacion, despachar, totales, productosEnUso, revision, alertasPorLinea };
+  return { cotizacion, despachar, totales, cambio, productosEnUso, revision, alertasPorLinea };
 }
 
 export type Despachar = ReturnType<typeof useCotizacion>['despachar'];

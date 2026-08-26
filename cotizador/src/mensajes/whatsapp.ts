@@ -8,7 +8,8 @@
  */
 
 import { EMPRESA } from '../datos/empresa';
-import { fechaCorta, MONEDA_DECLARADA, pesos, sumarDias, unidades } from '../dominio/formato';
+import { dinero, fechaCorta, monedaDeclarada, sumarDias, unidades } from '../dominio/formato';
+import { cambioDe } from '../dominio/moneda';
 import { totalesDeCotizacion, totalesDeLinea } from '../dominio/precios';
 import type { Cotizacion } from '../dominio/tipos';
 
@@ -16,7 +17,9 @@ const SEPARADOR = '━━━━━━━━━━━━━━━━━━';
 
 export function mensajeWhatsapp(cotizacion: Cotizacion, iva: number): string {
   const { cliente, condiciones } = cotizacion;
-  const totales = totalesDeCotizacion(cotizacion.lineas, iva);
+  const cambio = cambioDe(cotizacion);
+  const totales = totalesDeCotizacion(cotizacion.lineas, iva, cambio.moneda);
+  const importe = (valor: number) => dinero(valor, cambio.moneda);
   const bloques: string[] = [];
 
   bloques.push(
@@ -48,15 +51,15 @@ export function mensajeWhatsapp(cotizacion: Cotizacion, iva: number): string {
   );
 
   for (const linea of cotizacion.lineas) {
-    const t = totalesDeLinea(linea, iva);
+    const t = totalesDeLinea(linea, iva, cambio.moneda);
     bloques.push(
       [
         SEPARADOR,
         `📌 ${linea.descripcion}${linea.medida ? ` · ${linea.medida}` : ''}`,
         `📦 Cantidad: ${unidades(linea.cantidad)} unidades`,
-        `💲 Valor unitario: ${pesos(linea.unitario)}`,
+        `💲 Valor unitario: ${importe(linea.unitario)}`,
         ...(linea.descuento ? [`🏷️ Descuento: ${linea.descuento}%`] : []),
-        `💰 Total con IVA: ${pesos(t.total)}`,
+        `💰 Total con IVA: ${importe(t.total)}`,
       ].join('\n'),
     );
   }
@@ -64,7 +67,7 @@ export function mensajeWhatsapp(cotizacion: Cotizacion, iva: number): string {
   // Con una sola línea el total del documento repite el de la línea; sólo
   // vale la pena cuando hay varias.
   if (cotizacion.lineas.length > 1) {
-    bloques.push([SEPARADOR, `💰 TOTAL CON IVA: ${pesos(totales.total)}`].join('\n'));
+    bloques.push([SEPARADOR, `💰 TOTAL CON IVA: ${importe(totales.total)}`].join('\n'));
   }
 
   bloques.push(
@@ -80,7 +83,7 @@ export function mensajeWhatsapp(cotizacion: Cotizacion, iva: number): string {
       '',
       // La misma declaración que lleva el PDF: el «$» del mensaje es tan
       // ambiguo como el del documento, y aquí se lee incluso más deprisa.
-      `💵 ${MONEDA_DECLARADA}`,
+      `💵 ${monedaDeclarada(cambio)}`,
       SEPARADOR,
     ].join('\n'),
   );

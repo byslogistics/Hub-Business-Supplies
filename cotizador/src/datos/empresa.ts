@@ -32,11 +32,31 @@ export const EMPRESA = {
   datosBancarios: '',
 } as const;
 
-/** Asesores que firman cotizaciones. El primero es el que se propone por defecto. */
+/**
+ * Asesores que firman cotizaciones. El primero es el que se propone por
+ * defecto en una cotización nueva.
+ *
+ * Son los mismos nombres que pueden firmar un correo comercial (`REMITENTES`
+ * en `correo/plantillas.js`); están escritos dos veces porque el correo y el
+ * cotizador se despliegan por separado y ninguno depende del otro. Al añadir
+ * a alguien conviene mirar los dos sitios.
+ */
 export const ASESORES: readonly string[] = [
   'Yeimy Mahecha',
+  'Paola Vargas',
   'Equipo comercial B&S Logistics',
 ];
+
+/**
+ * Tasa que se propone al pasar una cotización a dólares.
+ *
+ * Es un punto de partida para no arrancar en cero, **no la tasa del día**:
+ * quien cotiza la corrige con la TRM que vaya a pactar, y la que quede
+ * escrita se guarda dentro de la cotización. Conviene actualizar este número
+ * de vez en cuando para que el punto de partida no quede ridículo, pero
+ * ninguna cotización emitida depende de él: cada una lleva la suya.
+ */
+export const TASA_USD_SUGERIDA = 4000;
 
 /**
  * Ciudades a las que el listado de precios promete flete incluido; el resto

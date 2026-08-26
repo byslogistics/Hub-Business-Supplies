@@ -12,6 +12,7 @@
  * precio es del asesor— pero tampoco dejan que pase inadvertido.
  */
 
+import { EN_PESOS, aMoneda, toleranciaDe, type Cambio } from './moneda';
 import { sugerirPrecio } from './precios';
 import type { Linea, Producto } from './tipos';
 
@@ -39,12 +40,21 @@ export function esGrave(alerta: Alerta): boolean {
 }
 
 /**
- * Diferencia por debajo de la cual dos precios se consideran el mismo. Los
- * unitarios del listado llegan con hasta dos decimales.
+ * Revisa una línea contra el listado.
+ *
+ * `cambio` existe porque el listado está en pesos y la línea puede no
+ * estarlo: lo que se compara es el precio del listado **ya convertido** a la
+ * moneda del documento, y con la tolerancia de esa moneda. Comparar sin
+ * convertir marcaría como «precio desactualizado» todas las líneas de una
+ * cotización en dólares, y compararlas con la tolerancia del peso —medio
+ * peso— las marcaría igual, porque medio peso es una diezmilésima de dólar y
+ * el propio redondeo a centavos ya la supera.
  */
-const TOLERANCIA = 0.5;
-
-export function revisarLinea(linea: Linea, producto: Producto | undefined): Alerta[] {
+export function revisarLinea(
+  linea: Linea,
+  producto: Producto | undefined,
+  cambio: Cambio = EN_PESOS,
+): Alerta[] {
   if (!producto) return [{ tipo: 'referencia-desconocida' }];
 
   const alertas: Alerta[] = [];
@@ -57,7 +67,11 @@ export function revisarLinea(linea: Linea, producto: Producto | undefined): Aler
     alertas.push({ tipo: 'bajo-minimo', minimo: producto.minimo });
   }
 
-  const difiere = Math.abs(sugerido.unitario - linea.unitario) > TOLERANCIA;
+  // Las cifras que llevan las alertas van en la moneda del documento: se
+  // pintan al lado del precio de la línea, y un aviso que compara dólares con
+  // pesos no avisa de nada.
+  const unitarioSugerido = aMoneda(sugerido.unitario, cambio);
+  const difiere = Math.abs(unitarioSugerido - linea.unitario) > toleranciaDe(cambio.moneda);
   if (difiere && sugerido.motivo !== 'sin-precio') {
     // `precioManual` es lo que separa las dos causas de una misma diferencia:
     // o la escribió el asesor, o el listado cambió por debajo. Antes las dos
@@ -65,8 +79,8 @@ export function revisarLinea(linea: Linea, producto: Producto | undefined): Aler
     // sencillamente falso.
     alertas.push(
       linea.precioManual
-        ? { tipo: 'precio-manual', sugerido: sugerido.unitario }
-        : { tipo: 'precio-desactualizado', guardado: linea.unitario, vigente: sugerido.unitario },
+        ? { tipo: 'precio-manual', sugerido: unitarioSugerido }
+        : { tipo: 'precio-desactualizado', guardado: linea.unitario, vigente: unitarioSugerido },
     );
   }
 
@@ -87,10 +101,11 @@ export interface Revision {
 export function revisarCotizacion(
   lineas: readonly Linea[],
   buscarProducto: (id: string) => Producto | undefined,
+  cambio: Cambio = EN_PESOS,
 ): Revision {
   const porLinea = lineas.map((linea) => ({
     lineaId: linea.id,
-    alertas: revisarLinea(linea, buscarProducto(linea.productoId)),
+    alertas: revisarLinea(linea, buscarProducto(linea.productoId), cambio),
   }));
 
   return {
