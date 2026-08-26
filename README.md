@@ -406,8 +406,10 @@ abierto a quien dé con la dirección.
 
 ## Publicar
 
-Falta hacer cinco cosas a mano, una sola vez cada una. Ninguna se puede
-automatizar desde aquí: todas piden la sesión de Cloudflare o de Resend.
+Falta hacer cinco cosas a mano, una sola vez cada una: todas piden la sesión
+de Cloudflare o de Resend, y por eso no las puede hacer el repositorio por su
+cuenta. Lo que sí queda automatizado desde ellas es lo que se repite —publicar
+en cada empuje, y aplicar las migraciones nuevas—.
 
 ### 1. Crear la base de datos
 
@@ -430,17 +432,43 @@ Los dos comandos se vuelven a correr cada vez que aparece un archivo nuevo en
 `0002_papelera.sql` —las dos columnas de la papelera— y la `0003_moneda.sql`
 —la moneda, la tasa y el total en divisa— son dos de ésas.
 
-**Esto no lo hace el despliegue.** Cada empuje a `main` publica el código
-solo, pero la base no se toca: Cloudflare no sabe qué hay en `migraciones/`.
-Si el código nuevo llega a una base sin migrar, el historial responde «La
-operación falló» a todo —lista y emisión—, porque sus consultas nombran
-columnas que ahí no existen. Armar la cotización y bajar el PDF siguen
-funcionando; lo que se cae es guardarla.
+**El despliegue no lo hace.** Cada empuje a `main` publica el código solo
+—Cloudflare Workers Builds—, pero la base no se toca: Cloudflare no sabe qué
+hay en `migraciones/`. Si el código nuevo llega a una base sin migrar, el
+historial responde «La operación falló» a todo —lista y emisión—, porque sus
+consultas nombran columnas que ahí no existen. Armar la cotización y bajar el
+PDF siguen funcionando; lo que se cae es guardarla.
 
-**Conviene migrar antes de desplegar, no después.** Añadir columnas no molesta
-al código viejo —tienen valor por defecto y él ni las nombra—, así que la base
-puede ir por delante sin que nadie lo note. Al revés hay un rato, entre el
-despliegue y el comando, con el historial caído.
+#### Que se aplique solo
+
+Por eso hay un flujo aparte, `.github/workflows/migrar.yml`, que corre
+`npm run migrar` contra la base de verdad cuando un empuje a `main` trae algo
+nuevo en `migraciones/`. Sólo entonces: el comando no repite lo ya aplicado,
+así que lanzarlo en cada empuje sería inofensivo pero inútil.
+
+Necesita una llave, que se pone una sola vez:
+
+1. En Cloudflare, **My Profile → API Tokens → Create Token → Create Custom
+   Token**. Un solo permiso: **Account → D1 → Edit**, sobre la cuenta donde
+   vive `bys-cotizaciones`. Nada más — con eso puede tocar D1 y ninguna otra
+   cosa de la cuenta.
+2. En GitHub, **Settings → Secrets and variables → Actions → New repository
+   secret**, con nombre `CLOUDFLARE_API_TOKEN` y el valor que imprimió
+   Cloudflare (sólo se enseña una vez).
+3. Si la cuenta de Cloudflare tiene más de una organización, hace falta además
+   el secreto `CLOUDFLARE_ACCOUNT_ID`; con una sola, el flujo lo deduce.
+
+Sin el secreto, el flujo se detiene en el primer paso diciendo qué falta, en
+vez de fallar con un error de autenticación que no explica nada.
+
+**Aun así, para una migración delicada conviene correr `npm run migrar` a mano
+antes de mezclar a `main`.** El flujo arranca a la vez que la construcción de
+Cloudflare, no antes, y encadenarlas no se puede desde aquí. En la práctica
+gana la migración —aplicar dos sentencias tarda segundos y construir el
+cotizador, minutos—, y el riesgo de perder la carrera es un rato con el
+historial caído, no un dato perdido: añadir columnas no molesta al código
+viejo, que ni las nombra, así que la base puede ir por delante sin que nadie
+lo note.
 
 ### 3. Poner la puerta: Cloudflare Access
 
@@ -564,7 +592,7 @@ worker/           la API del historial, del correo y la verificación de Access
 compartido/       el contrato entre el cotizador y el Worker: qué viaja por el cable
 migraciones/      el esquema de la base, en SQL
 scripts/          arma `publico/` a partir de la portada, el correo y el cotizador
-.github/          el flujo que publica la vista previa
+.github/          los flujos: la vista previa y las migraciones de la base
 ```
 
 La portada y el correo **no se construyen**: son un `index.html` con los

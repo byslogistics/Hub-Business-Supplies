@@ -1,0 +1,89 @@
+name: Migrar la base
+
+# Aplica a la base de verdad las migraciones nuevas de `migraciones/`.
+#
+# Existe porque el despliegue no lo hace: cada empuje a `main` publica el
+# código solo —Cloudflare Workers Builds—, pero la base no se toca, y un
+# Worker que consulta columnas que ahí no existen deja el historial
+# respondiendo «La operación falló» a todo. Antes de esto había que acordarse
+# de correr `npm run migrar` a mano cada vez que aparecía un archivo nuevo.
+#
+# Corre sólo cuando cambia algo en `migraciones/`: `wrangler d1 migrations
+# apply` aplica lo que falte y no repite lo ya aplicado, así que ejecutarlo en
+# cada empuje sería inofensivo pero inútil.
+#
+# **Sobre el orden.** Esto arranca a la vez que la construcción de Cloudflare,
+# no antes: no hay forma de encadenarlas desde aquí. En la práctica gana esta
+# —aplicar dos sentencias tarda segundos y construir el cotizador, minutos—,
+# y aunque llegara tarde, el riesgo es un rato con el historial caído, no un
+# dato perdido. Para una migración delicada, lo seguro sigue siendo correr
+# `npm run migrar` a mano antes de mezclar a `main`.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'migraciones/**'
+      - '.github/workflows/migrar.yml'
+  # Para relanzarla desde la pestaña Actions si algo falló o si se prefiere
+  # aplicar antes de mezclar.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Una a la vez. Dos empujes seguidos con migraciones distintas aplicándose a
+# la par sobre la misma base es justo lo que no se quiere.
+concurrency:
+  group: migraciones
+  cancel-in-progress: false
+
+jobs:
+  migrar:
+    name: Aplicar migraciones pendientes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Antes de instalar nada: sin la llave, `wrangler` fallaría con un error
+      # de autenticación que no dice qué hay que hacer.
+      - name: Comprobar que está la llave
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Falta el secreto CLOUDFLARE_API_TOKEN del repositorio."
+            echo "Se crea en Cloudflare (My Profile → API Tokens) con permiso D1:Edit"
+            echo "y se guarda en Settings → Secrets and variables → Actions."
+            echo "Está explicado en el README, sección «Publicar»."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # Sólo las del hub: wrangler vive aquí. El cotizador no pinta nada en
+      # una migración y sus dependencias son las que tardan.
+      - name: Instalar wrangler
+        run: npm ci
+
+      # Deja en el registro qué había pendiente antes de tocar nada, que es lo
+      # primero que uno quiere ver cuando algo sale mal.
+      - name: Qué falta por aplicar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 migrations list bys-cotizaciones --remote
+
+      # La confirmación que este comando pide por consola se salta sola en CI
+      # (lo dice su propia ayuda), y el respaldo previo se toma igual. Si una
+      # migración falla, se deshace y la anterior se queda aplicada.
+      - name: Aplicar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run migrar
