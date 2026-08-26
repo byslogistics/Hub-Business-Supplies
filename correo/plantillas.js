@@ -481,7 +481,7 @@ function formatoLigero(texto) {
   const enlaces = [];
   let resultado = texto.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, etiqueta, url) => {
     enlaces.push(`<a href="${url}" style="color:#00518e;">${etiqueta}</a>`);
-    return ` ${enlaces.length - 1} `;
+    return `\u0000${enlaces.length - 1}\u0000`;
   });
 
   resultado = resultado
@@ -492,5 +492,5 @@ function formatoLigero(texto) {
       (_, url, puntuacion) => `<a href="${url}" style="color:#00518e;">${url}</a>${puntuacion}`,
     );
 
-  return resultado.replace(/ (\d+) /g, (_, indice) => enlaces[Number(indice)]);
+  return resultado.replace(/\u0000(\d+)\u0000/g, (_, indice) => enlaces[Number(indice)]);
 }
