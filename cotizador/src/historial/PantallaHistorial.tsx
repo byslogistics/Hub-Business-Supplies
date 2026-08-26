@@ -29,7 +29,7 @@ import {
   type ResumenCotizacion,
   type Seleccion,
 } from '../../../compartido/historial';
-import { fechaCorta, pesos, unidades as formatoUnidades } from '../dominio/formato';
+import { dinero, fechaCorta, pesos, unidades as formatoUnidades } from '../dominio/formato';
 import type { Cotizacion } from '../dominio/tipos';
 import { almacen, FalloHistorial } from './almacen';
 import { CampoSelect, CampoTexto } from '../ui/componentes';
@@ -421,12 +421,23 @@ function Pestanas({
 
 /** Cuántas y por cuánto: la cifra que las socias miran primero. */
 function Resumen({ pagina, enPapelera }: { pagina: PaginaHistorial; enPapelera: boolean }) {
+  // La suma va en pesos siempre. Sumar pesos y dólares en la misma cifra
+  // daría un número que no es dinero de ninguna clase, así que lo cotizado en
+  // dólares entra convertido a la tasa que cada cotización guardó — y se dice,
+  // en cuanto se ve alguna, para que nadie tome la cifra por otra cosa.
+  const hayDivisa = pagina.cotizaciones.some((c) => c.moneda !== 'COP');
+
   return (
     <p className="text-sm text-neutral-600">
       <strong className="font-bold text-neutral-800">{pagina.cuantas}</strong>{' '}
       {pagina.cuantas === 1 ? 'cotización' : 'cotizaciones'}
       {enPapelera ? ' en la papelera' : ''} por un total de{' '}
       <strong className="font-bold text-neutral-800">{pesos(pagina.sumaTotales)}</strong>.
+      {hayDivisa ? (
+        <span className="block text-xs text-neutral-500">
+          Lo cotizado en dólares va convertido a la tasa que llevaba cada cotización.
+        </span>
+      ) : null}
     </p>
   );
 }
@@ -677,8 +688,18 @@ function Fila({
         </span>
       </td>
 
-      <td className="px-4 py-3 text-right font-bold whitespace-nowrap text-neutral-800">
-        {pesos(resumen.total)}
+      <td className="px-4 py-3 text-right whitespace-nowrap">
+        {/* La cifra grande es la del documento, en su moneda: es la que el
+            cliente tiene delante y por la que va a preguntar. El equivalente
+            en pesos va debajo, para poder comparar con el resto del listado. */}
+        <span className="block font-bold text-neutral-800">
+          {dinero(resumen.totalMoneda, resumen.moneda)}
+        </span>
+        {resumen.moneda !== 'COP' ? (
+          <span className="block text-xs font-normal text-neutral-400">
+            ≈ {pesos(resumen.total)} · TRM {pesos(resumen.tasa)}
+          </span>
+        ) : null}
       </td>
 
       <td className="px-4 py-3">

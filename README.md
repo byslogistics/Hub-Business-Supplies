@@ -40,7 +40,8 @@ queda guardada, y las dos socias ven la misma lista desde donde sea.
 
 De cada una se guarda **el documento JSON completo**, que es la fuente de
 verdad: al reabrirla se regenera un PDF idéntico al que recibió el cliente,
-aunque el listado de precios haya cambiado diez veces desde entonces. Las
+aunque el listado de precios haya cambiado diez veces desde entonces —y aunque
+se emitiera en dólares a una tasa que hoy ya no es la de nadie. Las
 columnas del listado —cliente, total, unidades— las calcula el servidor a
 partir de ese mismo documento, con las mismas funciones que usa la pantalla,
 para que el total del historial no pueda discrepar del total del PDF.
@@ -210,20 +211,53 @@ ahí, esos precios son los que van a ir en las ofertas. Corregirlas es corregir
 el Excel y volver a correr `npm run catalogo`; la lista se vacía sola cuando ya
 no queda ninguna.
 
-### Todo se cotiza en pesos colombianos
+### Cotizar en dólares
 
-Un documento del cotizador no lleva moneda: las cifras son COP y así lo
-declara el PDF bajo la tabla, una vez y para todas («Todas las cifras están
-expresadas en pesos colombianos»). El selector de la pantalla es de
-**tratamiento de IVA**, no de moneda: cambia el impuesto —19 %, sin IVA para
-una exportación, u otra tarifa— y nada más.
+Se puede cotizar en **pesos o en dólares**. La moneda se elige en «Datos de la
+oferta», junto al tratamiento de IVA, y son dos decisiones distintas aunque
+una exportación suela llevar las dos.
 
-Cotizar en dólares no es cambiar el símbolo. Habría que decidir con qué tasa
-se convierte y quién la actualiza, guardarla dentro de la cotización (igual
-que el IVA, para que lo emitido no se recalcule solo), y separar los totales
-del historial por moneda —hoy suma una columna de pesos, y sumar dólares y
-pesos en la misma cifra daría un número que no significa nada—. Está sin
-hacer a propósito, no por olvido: cuando haga falta, ése es el trabajo.
+El listado de precios está en pesos y va a seguir estándolo —los proveedores
+facturan en pesos y el margen se calcula en pesos—, así que cotizar en dólares
+es **convertir al salir**. La pregunta que lo decide todo es a cuántos pesos
+equivale un dólar, y la respuesta la escribe quien cotiza: al elegir dólares
+aparece el campo **TRM pactada**, y esa tasa **se guarda dentro de la
+cotización**.
+
+Guardarla, y no consultarla al abrir, es lo mismo que se hizo con el IVA: el
+PDF que el cliente tiene en la mano dice unas cifras, y esas cifras no pueden
+cambiar por debajo porque el dólar se movió el martes siguiente. Por la misma
+razón el PDF **imprime la tasa** junto a la moneda: meses después, las dos
+partes pueden reconstruir la cifra en pesos sin discutir cuál era.
+
+Lo que cambia al pasar a dólares:
+
+- **Los precios de las líneas se convierten**, incluidos los escritos a mano:
+  3.500 pesos pactados son 0,85 dólares, no 3.500 dólares. Lo que el asesor
+  negoció es un importe, no una cifra atada a un símbolo.
+- **Se redondea a centavos** en vez de a peso entero. Redondear 0,87 USD a
+  entero sería un 15 % de sobreprecio en una sola línea.
+- **El catálogo de la izquierda sigue en pesos**, y lo dice: es el listado, no
+  la oferta.
+- **El margen se sigue calculando en pesos**, que es donde está el costo de
+  compra. Comparar 0,87 dólares con un costo de 2.100 pesos daría un margen
+  catastrófico e inventado.
+- **El aviso de «precio desactualizado» compara ya convertido**, y con la
+  tolerancia del dólar. Con la del peso —medio peso— cada línea de cada
+  cotización en dólares saldría marcada, porque el propio redondeo a centavos
+  ya la supera.
+
+En el historial, cada cotización se lista **en su moneda**, con su equivalente
+en pesos debajo. La suma de arriba va siempre en pesos, convirtiendo cada
+cotización a la tasa que ella misma guardó: sumar pesos y dólares en la misma
+cifra daría un número que no es dinero de ninguna clase, y ordenar por él
+pondría una cotización de mil dólares por debajo de una de un millón de pesos.
+
+> El punto de partida de la TRM (`TASA_USD_SUGERIDA`, en
+> `cotizador/src/datos/empresa.ts`) es sólo eso, un punto de partida para no
+> arrancar en cero. **No es la tasa del día**: quien cotiza la corrige antes de
+> emitir, y la pantalla se lo recuerda en ámbar. Conviene actualizar ese número
+> de vez en cuando, pero ninguna cotización emitida depende de él.
 
 ---
 
@@ -345,7 +379,7 @@ resto de lo que pide la sección *Publicar* de abajo.
 
 ```bash
 npm run instalar     # dependencias del hub y del cotizador
-npm test             # 85 pruebas del cotizador
+npm test             # 104 pruebas del cotizador
 npm run build        # deja el sitio entero en publico/
 ```
 
@@ -393,8 +427,9 @@ npm run migrar:local    # y en la de pruebas, para el `npm run dev`
 
 Los dos comandos se vuelven a correr cada vez que aparece un archivo nuevo en
 `migraciones/`: aplican sólo lo que falte y no repiten lo ya aplicado. La
-`0002_papelera.sql` —las dos columnas de la papelera— es una de ésas: sin
-ella, el historial responde con un fallo al listar.
+`0002_papelera.sql` —las dos columnas de la papelera— y la `0003_moneda.sql`
+—la moneda, la tasa y el total en divisa— son dos de ésas: sin ellas, el
+historial responde con un fallo al listar.
 
 ### 3. Poner la puerta: Cloudflare Access
 

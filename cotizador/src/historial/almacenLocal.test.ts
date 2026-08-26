@@ -27,6 +27,8 @@ function cotizacion(cambios: Partial<Cotizacion> = {}): Cotizacion {
     fecha: '2026-08-14',
     asesor: 'Yeimy Mahecha',
     iva: 0.19,
+    moneda: 'COP',
+    tasa: 1,
     catalogoVersion: 'v1',
     cliente: {
       empresa: 'Coordinadora Mercantil S.A.',
@@ -243,6 +245,38 @@ describe('almacenLocal', () => {
  * Worker tiene que cumplirlas igual. Si un día divergen, el preview estaría
  * enseñando algo que no va a pasar.
  */
+describe('almacenLocal · dólares', () => {
+  const enDolares = { moneda: 'USD', tasa: 4000, iva: 0 } as const;
+
+  it('guarda el total en su moneda y el equivalente en pesos', async () => {
+    // Las dos cifras: la que el cliente tiene delante y la que el historial
+    // suma. Una sola columna con pesos y dólares mezclados daría una suma que
+    // no es dinero de ninguna clase.
+    const enDolaresConPrecio = cotizacion({ ...enDolares });
+    enDolaresConPrecio.lineas[0]!.unitario = 0.25;
+
+    const { numero } = await almacenLocal.registrar(enDolaresConPrecio);
+    const guardada = await almacenLocal.abrir(numero);
+
+    expect(guardada.moneda).toBe('USD');
+    expect(guardada.tasa).toBe(4000);
+    expect(guardada.totalMoneda).toBe(25); // 100 uds × 0,25, sin IVA
+    expect(guardada.total).toBe(100_000); // los mismos 25 dólares, a 4.000
+  });
+
+  it('la suma del listado va en pesos aunque haya dólares de por medio', async () => {
+    const enPesos = cotizacion();
+    const dolares = cotizacion({ ...enDolares });
+    dolares.lineas[0]!.unitario = 0.25;
+
+    await almacenLocal.registrar(enPesos);
+    await almacenLocal.registrar(dolares);
+
+    // 119.000 de la de pesos (100 × 1.000 + IVA) + 100.000 de la de dólares.
+    expect((await almacenLocal.listar({})).sumaTotales).toBe(219_000);
+  });
+});
+
 describe('almacenLocal · papelera', () => {
   const deOtroCliente = {
     empresa: 'Transportes del Norte',

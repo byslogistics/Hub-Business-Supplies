@@ -28,6 +28,7 @@ import {
   type ResumenCotizacion,
   type Seleccion,
 } from '../../../compartido/historial';
+import { cambioDe } from '../dominio/moneda';
 import { totalesDeCotizacion } from '../dominio/precios';
 import type { Cotizacion } from '../dominio/tipos';
 import { FalloHistorial, type Almacen } from './contrato';
@@ -93,10 +94,17 @@ function cumple(guardada: CotizacionGuardada<Cotizacion>, filtro: FiltroHistoria
 
 function aResumen(guardada: CotizacionGuardada<Cotizacion>): ResumenCotizacion {
   const { documento: _documento, ...resumen } = guardada;
-  // Los dos campos de la papelera se normalizan porque en `localStorage`
-  // puede haber cotizaciones guardadas por una versión anterior de la vista
-  // previa, que no los traía.
-  return { ...resumen, eliminadaEn: resumen.eliminadaEn ?? null, eliminadaPor: resumen.eliminadaPor ?? null };
+  // Se normaliza lo que se añadió después, porque en `localStorage` puede
+  // haber cotizaciones guardadas por una versión anterior de la vista previa
+  // que no lo traía: los dos campos de la papelera y los tres de la moneda.
+  return {
+    ...resumen,
+    eliminadaEn: resumen.eliminadaEn ?? null,
+    eliminadaPor: resumen.eliminadaPor ?? null,
+    moneda: resumen.moneda ?? 'COP',
+    tasa: resumen.tasa || 1,
+    totalMoneda: resumen.totalMoneda ?? resumen.total,
+  };
 }
 
 export const almacenLocal: Almacen = {
@@ -110,7 +118,8 @@ export const almacenLocal: Almacen = {
     const guardadas = leer();
     const numero = cotizacion.numero || siguienteNumero(guardadas);
     const emitidaEn = new Date().toISOString();
-    const totales = totalesDeCotizacion(cotizacion.lineas, cotizacion.iva);
+    const cambio = cambioDe(cotizacion);
+    const totales = totalesDeCotizacion(cotizacion.lineas, cotizacion.iva, cambio.moneda);
     const previa = guardadas[numero];
 
     // La misma guarda que el Worker: un número escrito a mano no se lleva por
@@ -141,7 +150,12 @@ export const almacenLocal: Almacen = {
       cliente: cotizacion.cliente?.empresa ?? '',
       nit: cotizacion.cliente?.nit ?? '',
       contacto: cotizacion.cliente?.contacto ?? '',
-      total: Math.round(totales.total),
+      // Igual que el Worker: `total` en pesos —es con lo que se suma y se
+      // ordena— y `totalMoneda` tal como lo dice el documento.
+      total: Math.round(totales.total * cambio.tasa),
+      totalMoneda: totales.total,
+      moneda: cambio.moneda,
+      tasa: cambio.tasa,
       unidades: Math.round(totales.unidades),
       // El seguimiento comercial sobrevive a una reemisión.
       estado: previa?.estado ?? 'emitida',

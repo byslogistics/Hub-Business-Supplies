@@ -16,9 +16,11 @@ import { Insignia } from './componentes';
 interface Props {
   alAgregar: (producto: Producto) => void;
   productosEnUso: ReadonlySet<string>;
+  /** La cotización va en otra moneda: los precios de aquí son en pesos. */
+  enDivisa?: boolean;
 }
 
-export function PanelCatalogo({ alAgregar, productosEnUso }: Props) {
+export function PanelCatalogo({ alAgregar, productosEnUso, enDivisa = false }: Props) {
   const [consulta, setConsulta] = useState('');
   const [categoria, setCategoria] = useState('');
 
@@ -38,6 +40,17 @@ export function PanelCatalogo({ alAgregar, productosEnUso }: Props) {
             {encontrados} de {catalogo.productos.length} referencias
           </span>
         </div>
+
+        {/* El listado está en pesos siempre. Mientras la cotización va en
+            pesos no hace falta decirlo; cuando va en dólares, sí: si no, las
+            cifras de esta columna y las de la de al lado parecen la misma
+            clase de número. */}
+        {enDivisa ? (
+          <p className="text-xs text-amber-700">
+            Precios del listado en pesos (COP). Al añadir una referencia se convierten a la moneda
+            de la cotización.
+          </p>
+        ) : null}
 
         {/* El texto de las etiquetas va oculto: el rótulo «Catálogo» y el
             marcador de posición bastan a la vista, pero un lector de pantalla

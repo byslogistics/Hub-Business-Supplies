@@ -89,6 +89,42 @@ describe('esGrave', () => {
   });
 });
 
+describe('revisarLinea en dólares', () => {
+  const enDolares = { moneda: 'USD', tasa: 4000 } as const;
+
+  it('no marca nada cuando la línea es el precio del listado convertido', () => {
+    // 400 pesos a 4.000 son 0,10 dólares. Comparar sin convertir marcaría
+    // todas las líneas de una cotización en dólares como desactualizadas.
+    expect(revisarLinea(linea({ unitario: 0.1 }), producto, enDolares)).toEqual([]);
+  });
+
+  it('tolera lo que cuesta el propio redondeo a centavos', () => {
+    // 480 pesos a 4.100 son 0,117…: se guarda 0,12, que de vuelta son 492. Con
+    // la tolerancia del peso —medio peso— eso se marcaría como precio
+    // desactualizado en cada línea, siempre.
+    const catalogoSubido: Producto = {
+      ...producto,
+      escalones: [{ desde: 1000, unitario: 480, logo: true }],
+    };
+
+    expect(revisarLinea(linea({ unitario: 0.12 }), catalogoSubido, { moneda: 'USD', tasa: 4100 }))
+      .toEqual([]);
+  });
+
+  it('sigue avisando de verdad cuando el listado cambió, y en dólares', () => {
+    const catalogoSubido: Producto = {
+      ...producto,
+      escalones: [{ desde: 1000, unitario: 800, logo: true }],
+    };
+
+    expect(revisarLinea(linea({ unitario: 0.1 }), catalogoSubido, enDolares)).toEqual([
+      // Las dos cifras van en la moneda del documento: un aviso que compara
+      // dólares con pesos no avisa de nada.
+      { tipo: 'precio-desactualizado', guardado: 0.1, vigente: 0.2 },
+    ]);
+  });
+});
+
 describe('revisarCotizacion', () => {
   const buscar = (id: string) => (id === producto.id ? producto : undefined);
 

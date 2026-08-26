@@ -10,6 +10,27 @@
  * quien lo recibe decide de qué tipo es.
  */
 
+/**
+ * La moneda de una cotización.
+ *
+ * Vive en el contrato, y no sólo dentro del cotizador, porque el historial la
+ * guarda: sin ella, una fila de mil doscientos no dice si son mil doscientos
+ * pesos o mil doscientos dólares, que es una diferencia de cuatro millones.
+ */
+export type Moneda = 'COP' | 'USD';
+
+export const MONEDAS: readonly Moneda[] = ['COP', 'USD'];
+
+/** Cómo se llama cada moneda en pantalla y en los documentos. */
+export const NOMBRE_MONEDA: Record<Moneda, string> = {
+  COP: 'Pesos colombianos (COP)',
+  USD: 'Dólares estadounidenses (USD)',
+};
+
+export function esMoneda(valor: unknown): valor is Moneda {
+  return valor === 'COP' || valor === 'USD';
+}
+
 export type Estado = 'emitida' | 'aceptada' | 'perdida';
 
 export const ESTADOS: readonly Estado[] = ['emitida', 'aceptada', 'perdida'];
@@ -41,7 +62,21 @@ export interface ResumenCotizacion {
   cliente: string;
   nit: string;
   contacto: string;
+  /**
+   * El total **en pesos**, siempre, aunque la cotización se haya emitido en
+   * dólares: convertido con la tasa que ella misma guarda.
+   *
+   * Es lo que hace que la suma del historial signifique algo. Sumar una
+   * columna con pesos y dólares mezclados daría una cifra que no es dinero de
+   * ninguna clase, y ordenar por ella pondría una cotización de mil dólares
+   * por debajo de una de un millón de pesos.
+   */
   total: number;
+  /** El total tal como lo dice el documento, en su propia moneda. */
+  totalMoneda: number;
+  moneda: Moneda;
+  /** Pesos por una unidad de la moneda. 1 en las cotizaciones en pesos. */
+  tasa: number;
   unidades: number;
   estado: Estado;
   estadoNota: string;
@@ -81,7 +116,7 @@ export interface PaginaHistorial {
   cuantas: number;
   pagina: number;
   porPagina: number;
-  /** Suma de los totales de todas las que cumplen el filtro. */
+  /** Suma **en pesos** de los totales de todas las que cumplen el filtro. */
   sumaTotales: number;
 }
 

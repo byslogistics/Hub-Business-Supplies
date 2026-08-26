@@ -48,6 +48,17 @@ export const ASESORES: readonly string[] = [
 ];
 
 /**
+ * Tasa que se propone al pasar una cotización a dólares.
+ *
+ * Es un punto de partida para no arrancar en cero, **no la tasa del día**:
+ * quien cotiza la corrige con la TRM que vaya a pactar, y la que quede
+ * escrita se guarda dentro de la cotización. Conviene actualizar este número
+ * de vez en cuando para que el punto de partida no quede ridículo, pero
+ * ninguna cotización emitida depende de él: cada una lleva la suya.
+ */
+export const TASA_USD_SUGERIDA = 4000;
+
+/**
  * Ciudades a las que el listado de precios promete flete incluido; el resto
  * se cotiza con flete contra entrega.
  */

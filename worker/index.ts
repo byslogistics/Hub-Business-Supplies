@@ -19,6 +19,7 @@
  */
 
 import {
+  esMoneda,
   formatoNumero,
   MAXIMO_SELECCION,
   mismoCliente,
@@ -28,10 +29,12 @@ import {
   type ErrorApi,
   type Estado,
   type FiltroHistorial,
+  type Moneda,
   type PaginaHistorial,
   type ResumenCotizacion,
   type Seleccion,
 } from '../compartido/historial';
+import { cambioDe } from '../cotizador/src/dominio/moneda';
 import { totalesDeCotizacion } from '../cotizador/src/dominio/precios';
 import type { Cotizacion } from '../cotizador/src/dominio/tipos';
 import { identificar, SinAcceso } from './acceso';
@@ -358,6 +361,7 @@ async function registrar(
 ): Promise<{ numero: string; emitidaEn: string }> {
   const documento = await leerDocumento(peticion);
   const emitidaEn = new Date().toISOString();
+  const cambio = cambioDe(documento);
 
   // Con número dado hay que mirar antes si ese número ya es de alguien: el
   // `ON CONFLICT` de abajo actualiza en silencio, y en silencio es justo como
@@ -366,7 +370,12 @@ async function registrar(
 
   const numero = numeroDado ?? (await siguienteNumero(base, documento.fecha));
 
-  const totales = totalesDeCotizacion(documento.lineas, documento.iva);
+  const totales = totalesDeCotizacion(documento.lineas, documento.iva, cambio.moneda);
+  // Dos cifras y no una: la del documento, en su moneda, y su equivalente en
+  // pesos, que es con el que el historial suma y ordena. Las dos se calculan
+  // aquí a partir del documento, igual que antes: nada que llegue calculado
+  // desde el navegador entra en la base.
+  const totalEnPesos = Math.round(totales.total * cambio.tasa);
 
   // `INSERT OR REPLACE` no vale: se llevaría por delante el estado y la nota
   // de una cotización ya marcada como aceptada. Sólo se refresca lo que
@@ -376,8 +385,8 @@ async function registrar(
       `INSERT INTO cotizaciones (
          numero, fecha, emitida_en, autor, asesor,
          cliente_empresa, cliente_nit, cliente_contacto,
-         total, unidades, catalogo_version, documento
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         total, total_divisa, moneda, tasa, unidades, catalogo_version, documento
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(numero) DO UPDATE SET
          fecha            = excluded.fecha,
          asesor           = excluded.asesor,
@@ -385,6 +394,9 @@ async function registrar(
          cliente_nit      = excluded.cliente_nit,
          cliente_contacto = excluded.cliente_contacto,
          total            = excluded.total,
+         total_divisa     = excluded.total_divisa,
+         moneda           = excluded.moneda,
+         tasa             = excluded.tasa,
          unidades         = excluded.unidades,
          catalogo_version = excluded.catalogo_version,
          documento        = excluded.documento,
@@ -403,7 +415,10 @@ async function registrar(
       documento.cliente?.empresa ?? '',
       documento.cliente?.nit ?? '',
       documento.cliente?.contacto ?? '',
-      Math.round(totales.total),
+      totalEnPesos,
+      totales.total,
+      cambio.moneda,
+      cambio.tasa,
       Math.round(totales.unidades),
       documento.catalogoVersion ?? '',
       JSON.stringify({ ...documento, numero }),
@@ -525,6 +540,20 @@ async function leerDocumento(peticion: Request): Promise<Cotizacion> {
   if (!Number.isFinite(documento.iva)) {
     throw new ErrorPeticion(400, 'invalida', 'La cotización no trae tarifa de IVA.');
   }
+  // La moneda puede faltar —las emitidas antes de que existiera no la traen, y
+  // eran todas en pesos—, pero si viene tiene que ser una de las dos, y una en
+  // dólares sin tasa utilizable no se puede guardar: su equivalente en pesos
+  // sería cero y el historial la sumaría como si no valiera nada.
+  if (documento.moneda !== undefined && !esMoneda(documento.moneda)) {
+    throw new ErrorPeticion(400, 'invalida', 'Esa moneda no existe.');
+  }
+  if (documento.moneda === 'USD' && !(Number(documento.tasa) > 0)) {
+    throw new ErrorPeticion(
+      400,
+      'invalida',
+      'Una cotización en dólares necesita la tasa de cambio con la que se hizo.',
+    );
+  }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(documento.fecha ?? '')) {
     throw new ErrorPeticion(400, 'invalida', 'La fecha de la cotización no es válida.');
   }
@@ -625,7 +654,8 @@ async function listar(base: D1Database, filtro: FiltroHistorial): Promise<Pagina
       .prepare(
         `SELECT numero, fecha, emitida_en, autor, asesor,
                 cliente_empresa, cliente_nit, cliente_contacto,
-                total, unidades, estado, estado_nota, estado_en, estado_por,
+                total, total_divisa, moneda, tasa,
+                unidades, estado, estado_nota, estado_en, estado_por,
                 eliminada_en, eliminada_por
            FROM cotizaciones ${donde}
           ORDER BY emitida_en DESC
@@ -815,6 +845,9 @@ function aResumen(fila: Record<string, unknown>): ResumenCotizacion {
     nit: String(fila.cliente_nit ?? ''),
     contacto: String(fila.cliente_contacto ?? ''),
     total: Number(fila.total ?? 0),
+    totalMoneda: Number(fila.total_divisa ?? fila.total ?? 0),
+    moneda: esMoneda(fila.moneda) ? (fila.moneda as Moneda) : 'COP',
+    tasa: Number(fila.tasa) > 0 ? Number(fila.tasa) : 1,
     unidades: Number(fila.unidades ?? 0),
     estado: (fila.estado as Estado) ?? 'emitida',
     estadoNota: String(fila.estado_nota ?? ''),

@@ -16,7 +16,8 @@
 import { useState } from 'react';
 
 import { catalogo } from './dominio/catalogo';
-import { pesos } from './dominio/formato';
+import { dinero } from './dominio/formato';
+import type { Moneda } from './dominio/moneda';
 import { EMPRESA } from './datos/empresa';
 import type { Cotizacion, Producto } from './dominio/tipos';
 import { almacen, ES_DEMOSTRACION, FalloHistorial } from './historial/almacen';
@@ -88,7 +89,8 @@ function Cotizador({
   estado: ReturnType<typeof useCotizacion>;
   alHistorial: () => void;
 }) {
-  const { cotizacion, despachar, totales, productosEnUso, revision, alertasPorLinea } = estado;
+  const { cotizacion, despachar, totales, cambio, productosEnUso, revision, alertasPorLinea } =
+    estado;
   const [verMargen, setVerMargen] = useState(false);
   const [aviso, setAviso] = useState('');
   const [panel, setPanel] = useState<Panel>('catalogo');
@@ -271,7 +273,11 @@ function Cotizador({
             panel === 'catalogo' ? 'flex' : 'hidden'
           }`}
         >
-          <PanelCatalogo productosEnUso={productosEnUso} alAgregar={agregar} />
+          <PanelCatalogo
+            productosEnUso={productosEnUso}
+            alAgregar={agregar}
+            enDivisa={cambio.moneda !== 'COP'}
+          />
         </aside>
 
         <div
@@ -310,12 +316,13 @@ function Cotizador({
               lineas={cotizacion.lineas}
               despachar={despachar}
               iva={cotizacion.iva}
+              cambio={cambio}
               alertasPorLinea={alertasPorLinea}
               verMargen={verMargen}
             />
           </Seccion>
 
-          <ResumenTotales totales={totales} iva={cotizacion.iva} />
+          <ResumenTotales totales={totales} iva={cotizacion.iva} cambio={cambio} />
           <PanelCondiciones cotizacion={cotizacion} despachar={despachar} />
 
           {/* Las acciones secundarias, que en móvil no caben en la barra. */}
@@ -347,6 +354,7 @@ function Cotizador({
 
       <BarraMovil
         total={totales.total}
+        moneda={cambio.moneda}
         vacia={vacia || emitiendo}
         alWhatsapp={acciones.whatsapp}
         alDescargar={acciones.descargar}
@@ -424,11 +432,13 @@ function Conmutador({
 /** Total siempre a la vista y las dos acciones de envío, sólo en móvil. */
 function BarraMovil({
   total,
+  moneda,
   vacia,
   alWhatsapp,
   alDescargar,
 }: {
   total: number;
+  moneda: Moneda;
   vacia: boolean;
   alWhatsapp: () => void;
   alDescargar: () => void;
@@ -444,7 +454,7 @@ function BarraMovil({
       <div className="flex items-center gap-3">
         <div className="mr-auto min-w-0">
           <p className="text-[11px] font-bold tracking-wide text-neutral-500 uppercase">Total</p>
-          <p className="truncate text-lg font-bold text-neutral-900">{pesos(total)}</p>
+          <p className="truncate text-lg font-bold text-neutral-900">{dinero(total, moneda)}</p>
         </div>
         <button type="button" className="boton-whatsapp" onClick={alWhatsapp} disabled={vacia}>
           WhatsApp

@@ -11,6 +11,7 @@ import { PLANTILLA_POR_DEFECTO } from '../datos/condiciones';
 import { catalogo } from './catalogo';
 import { ASESORES } from '../datos/empresa';
 import { hoyIso } from './formato';
+import { aMoneda, cambioDe, convertir, EN_PESOS, type Cambio } from './moneda';
 import { sugerirPrecio } from './precios';
 import type { Cliente, Cotizacion, Linea, Producto } from './tipos';
 
@@ -46,6 +47,10 @@ export function cotizacionNueva(): Cotizacion {
     fecha,
     asesor: ASESORES[0]!,
     iva: catalogo.iva,
+    // En pesos, que es la moneda del listado y la de casi todo lo que se
+    // cotiza. Pasar a dólares es un cambio explícito de quien cotiza.
+    moneda: 'COP',
+    tasa: 1,
     catalogoVersion: catalogo.version,
     cliente: { ...CLIENTE_VACIO },
     lineas: [],
@@ -66,6 +71,7 @@ export function cotizacionNueva(): Cotizacion {
 export function lineaDesdeProducto(
   producto: Producto,
   opciones: { cantidad?: number; conLogo?: boolean; medida?: string } = {},
+  cambio: Cambio = EN_PESOS,
 ): Linea {
   const conLogo = opciones.conLogo ?? (producto.admiteLogo && !producto.admiteSinLogo);
   const medida = opciones.medida ?? producto.medidas?.[0]?.nombre;
@@ -79,7 +85,8 @@ export function lineaDesdeProducto(
     cantidad,
     conLogo,
     medida,
-    unitario,
+    // El listado está en pesos; la línea, en la moneda de la cotización.
+    unitario: aMoneda(unitario, cambio),
     precioManual: false,
     descuento: 0,
   };
@@ -96,6 +103,7 @@ export function actualizarLinea(
   linea: Linea,
   cambios: Partial<Linea>,
   producto: Producto | undefined,
+  cambio: Cambio = EN_PESOS,
 ): Linea {
   const siguiente: Linea = { ...linea, ...cambios };
 
@@ -107,36 +115,76 @@ export function actualizarLinea(
   const soltoElPrecio = cambios.precioManual === false;
 
   if (producto && (soltoElPrecio || (cambioLaBase && !siguiente.precioManual))) {
-    siguiente.unitario = sugerirPrecio(producto, siguiente.cantidad, {
-      conLogo: siguiente.conLogo,
-      medida: siguiente.medida,
-    }).unitario;
+    siguiente.unitario = aMoneda(
+      sugerirPrecio(producto, siguiente.cantidad, {
+        conLogo: siguiente.conLogo,
+        medida: siguiente.medida,
+      }).unitario,
+      cambio,
+    );
     siguiente.precioManual = false;
   }
 
   return siguiente;
 }
 
+/**
+ * Pasa una cotización entera a otra moneda, o a otra tasa.
+ *
+ * Los precios escritos a mano se **convierten**, no se recalculan: lo que el
+ * asesor negoció es un importe, y 3.500 pesos pactados son 0,85 dólares, no
+ * 3.500 dólares. Los demás se convierten igual — el resultado es el mismo que
+ * volver a pedírselos al listado, porque de ahí salieron.
+ *
+ * Cambiar sólo la tasa (seguir en dólares con otra TRM) hace lo propio: los
+ * automáticos se recolocan sobre la nueva tasa y los manuales se quedan como
+ * están, porque son cifras en dólares que alguien decidió.
+ */
+export function convertirCotizacion(cotizacion: Cotizacion, hacia: Cambio): Cotizacion {
+  const desde = cambioDe(cotizacion);
+  const mismaMoneda = desde.moneda === hacia.moneda;
+
+  return {
+    ...cotizacion,
+    moneda: hacia.moneda,
+    tasa: hacia.tasa,
+    lineas: cotizacion.lineas.map((linea) =>
+      mismaMoneda && linea.precioManual
+        ? linea
+        : { ...linea, unitario: convertir(linea.unitario, desde, hacia) },
+    ),
+  };
+}
+
+/**
+ * Completa una cotización que viene de fuera con lo que le falte.
+ *
+ * De fuera son dos sitios: el borrador de `localStorage` y el documento que
+ * devuelve el historial al reabrir una cotización emitida. En los dos puede
+ * faltar lo que se añadió después —la tarifa de IVA en su día, la moneda
+ * ahora—, y dejarlo en `undefined` produce totales `NaN` y un PDF con «NaN»
+ * impreso donde iba el total.
+ */
+export function normalizar(guardada: Cotizacion): Cotizacion {
+  const cambio = cambioDe(guardada);
+  return {
+    ...guardada,
+    iva: Number.isFinite(guardada.iva) ? guardada.iva : catalogo.iva,
+    catalogoVersion: guardada.catalogoVersion ?? catalogo.version,
+    moneda: cambio.moneda,
+    tasa: cambio.tasa,
+  };
+}
+
 export function guardarBorrador(cotizacion: Cotizacion): void {
   escribir(CLAVE_BORRADOR, cotizacion);
 }
 
-/**
- * Recupera el borrador y completa lo que falte.
- *
- * Los borradores guardados antes de que la cotización llevara su propia
- * tarifa no tienen `iva` ni `catalogoVersion`. Se rellenan con lo vigente:
- * no hay mejor dato, y dejarlos en `undefined` produciría totales `NaN`.
- */
+/** Recupera el borrador y completa lo que falte (ver `normalizar`). */
 export function recuperarBorrador(): Cotizacion | null {
   const guardado = leer<Cotizacion>(CLAVE_BORRADOR);
   if (!guardado?.lineas || !Array.isArray(guardado.lineas)) return null;
-
-  return {
-    ...guardado,
-    iva: Number.isFinite(guardado.iva) ? guardado.iva : catalogo.iva,
-    catalogoVersion: guardado.catalogoVersion ?? catalogo.version,
-  };
+  return normalizar(guardado);
 }
 
 export function descartarBorrador(): void {
