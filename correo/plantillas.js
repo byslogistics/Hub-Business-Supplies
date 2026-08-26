@@ -59,6 +59,10 @@ export const EMPRESA = {
   // La dirección desde la que sale técnicamente el correo. Tiene que ser del
   // dominio verificado en Resend — ver el README para el porqué.
   correoVentas: 'ventas@byslogistics.com.co',
+  redes: {
+    facebook: 'https://www.facebook.com/people/Byslogistics/100070925777333/',
+    instagram: 'https://www.instagram.com/byslogistics/',
+  },
 };
 
 // Nombres de clave sin dígitos al inicio: en JavaScript `objeto.700` no se
@@ -73,10 +77,20 @@ const BRAND = {
   fondo: '#eef2f6',
 };
 
-// Ancho de la tarjeta del correo. 640 y no 600: a 600 se veía angosto y
-// apretado dentro de clientes de correo con mucho espacio alrededor (Gmail en
-// escritorio, sobre todo).
-const ANCHO_CORREO = 640;
+// Ancho de la tarjeta del correo. Lo más ancho que se ve bien sin quedar
+// incómodo de leer en escritorio (Gmail, Outlook web) — con `max-width:100%`
+// en la tabla, en el celular se encoge solo al ancho de la pantalla.
+const ANCHO_CORREO = 700;
+
+/** Los botones (CTA) que existen para poner en un correo. Cuáles aparecen es
+ *  algo que se elige al armar el correo, no algo fijo por plantilla — por eso
+ *  cada plantilla sólo sugiere cuáles marcar de entrada (`ctasSugeridos`). */
+const DEFINICIONES_CTA = {
+  sitio: { texto: 'Visitar byslogistics.com.co', href: () => EMPRESA.sitioUrl },
+  whatsapp: { texto: 'Escribir por WhatsApp', href: (remitente) => waLink(remitente.whatsapp) },
+  facebook: { texto: 'Síguenos en Facebook', href: () => EMPRESA.redes.facebook },
+  instagram: { texto: 'Síguenos en Instagram', href: () => EMPRESA.redes.instagram },
+};
 
 // Tope de adjuntos que se deja pegar desde el formulario. Coincide con el que
 // vuelve a comprobar `worker/index.ts` — cambiar uno sin el otro no tiene
@@ -90,9 +104,10 @@ export const MAXIMO_ADJUNTOS_BYTES = 8 * 1024 * 1024;
 //  - `colorEtiqueta`: el color de la franja fina de arriba del correo — es
 //    sólo un acento visual por tipo de correo, el cliente nunca ve el nombre
 //    de la plantilla escrito.
-//  - `ctaTipo`: 'sitio' (botón a la página web), 'whatsapp' (botón al
-//    WhatsApp de quien firma) o 'ninguno' — no todos los correos necesitan
-//    empujar a una acción; un agradecimiento, por ejemplo, no.
+//  - `ctasSugeridos`: qué botones (de `DEFINICIONES_CTA`) vienen marcados de
+//    entrada al elegir esa plantilla — la vendedora los puede cambiar antes
+//    de mandar. Vacío para los correos que no necesitan empujar una acción,
+//    un agradecimiento por ejemplo.
 //  - `asunto(datos)` y `cuerpo(datos)`: `cuerpo` sólo da el contenido de en
 //    medio — el encabezado y la firma los pone `envoltura` una sola vez,
 //    iguales para todas.
@@ -102,8 +117,7 @@ export const PLANTILLAS = {
     nombre: 'Presentación comercial',
     descripcion: 'Primer contacto con un cliente nuevo: quiénes somos y qué ofrecemos.',
     colorEtiqueta: BRAND.azul500,
-    ctaTipo: 'sitio',
-    ctaTexto: 'Visitar byslogistics.com.co',
+    ctasSugeridos: ['sitio'],
     campos: [
       campo('nombreCliente', 'Nombre del cliente', 'text', false),
       campo('empresaCliente', 'Empresa del cliente (opcional)', 'text', false),
@@ -133,8 +147,7 @@ export const PLANTILLAS = {
     nombre: 'Seguimiento a cotización',
     descripcion: 'Para retomar contacto después de haber enviado una cotización. Adjunta el PDF si lo tienes a mano.',
     colorEtiqueta: BRAND.azul700,
-    ctaTipo: 'whatsapp',
-    ctaTexto: 'Escribir por WhatsApp',
+    ctasSugeridos: ['whatsapp'],
     campos: [
       campo('nombreCliente', 'Nombre del cliente', 'text', false),
       campo('numeroCotizacion', 'Número de cotización (opcional)', 'text', false),
@@ -158,8 +171,7 @@ export const PLANTILLAS = {
     nombre: 'Oferta puntual',
     descripcion: 'Una promoción o condición especial por tiempo limitado.',
     colorEtiqueta: BRAND.ambar600,
-    ctaTipo: 'sitio',
-    ctaTexto: 'Ver catálogo completo',
+    ctasSugeridos: ['sitio'],
     campos: [
       campo('nombreCliente', 'Nombre del cliente', 'text', false),
       campo('tituloOferta', 'Título de la oferta', 'text', true),
@@ -180,8 +192,7 @@ export const PLANTILLAS = {
     nombre: 'Reactivar cliente',
     descripcion: 'Para un cliente con el que hace tiempo no se habla.',
     colorEtiqueta: BRAND.azul500,
-    ctaTipo: 'whatsapp',
-    ctaTexto: 'Hablemos por WhatsApp',
+    ctasSugeridos: ['whatsapp'],
     campos: [
       campo('nombreCliente', 'Nombre del cliente', 'text', false),
       campo('mensaje', 'Mensaje (opcional — si lo deja vacío se usa un texto general)', 'textarea', false),
@@ -203,7 +214,7 @@ export const PLANTILLAS = {
     nombre: 'Gracias por su compra',
     descripcion: 'Confirmación y agradecimiento después de un pedido.',
     colorEtiqueta: BRAND.verde600,
-    ctaTipo: 'ninguno',
+    ctasSugeridos: [],
     campos: [
       campo('nombreCliente', 'Nombre del cliente', 'text', false),
       campo('numeroPedido', 'Número de pedido o cotización (opcional)', 'text', false),
@@ -226,8 +237,7 @@ export const PLANTILLAS = {
     nombre: 'Recordatorio de pago',
     descripcion: 'Para una factura o saldo pendiente.',
     colorEtiqueta: BRAND.ambar600,
-    ctaTipo: 'whatsapp',
-    ctaTexto: 'Confirmar el pago por WhatsApp',
+    ctasSugeridos: ['whatsapp'],
     campos: [
       campo('nombreCliente', 'Nombre del cliente', 'text', false),
       campo('numeroFactura', 'Número de factura o cotización (opcional)', 'text', false),
@@ -253,7 +263,7 @@ export const PLANTILLAS = {
     nombre: 'Correo libre (en blanco)',
     descripcion: 'Para cuando ninguna plantilla encaja: escribe el correo tal cual, sin saludo ni cierre fijos.',
     colorEtiqueta: BRAND.morado600,
-    ctaTipo: 'ninguno',
+    ctasSugeridos: [],
     campos: [
       campo(
         'mensaje',
@@ -277,9 +287,11 @@ export const PLANTILLAS = {
  * @param {string} remitenteId
  * @param {string} plantillaId
  * @param {Record<string, string>} datos
+ * @param {string[]} [ctasActivos] Claves de `DEFINICIONES_CTA` a incluir. Si
+ *   se omite, se usan las que la plantilla trae sugeridas.
  * @returns {{ asunto: string, html: string, remitente: object }}
  */
-export function renderCorreo(remitenteId, plantillaId, datos) {
+export function renderCorreo(remitenteId, plantillaId, datos, ctasActivos) {
   const { remitente, plantilla } = resolver(remitenteId, plantillaId);
 
   for (const c of plantilla.campos) {
@@ -288,7 +300,7 @@ export function renderCorreo(remitenteId, plantillaId, datos) {
     }
   }
 
-  return construir(remitente, plantilla, datos);
+  return construir(remitente, plantilla, datos, ctasActivos);
 }
 
 /**
@@ -296,9 +308,9 @@ export function renderCorreo(remitenteId, plantillaId, datos) {
  * que la vista previa del formulario se pinte de inmediato mientras se
  * escribe, en vez de quedarse en blanco hasta que todo esté completo.
  */
-export function previsualizarCorreo(remitenteId, plantillaId, datos) {
+export function previsualizarCorreo(remitenteId, plantillaId, datos, ctasActivos) {
   const { remitente, plantilla } = resolver(remitenteId, plantillaId);
-  return construir(remitente, plantilla, datos);
+  return construir(remitente, plantilla, datos, ctasActivos);
 }
 
 function resolver(remitenteId, plantillaId) {
@@ -309,10 +321,22 @@ function resolver(remitenteId, plantillaId) {
   return { remitente, plantilla };
 }
 
-function construir(remitente, plantilla, datos) {
+function construir(remitente, plantilla, datos, ctasActivos) {
   const asunto = plantilla.asunto(datos);
-  const html = envoltura(plantilla.cuerpo(datos), remitente, plantilla);
+  const ctas = ctasDe(ctasActivos ?? plantilla.ctasSugeridos, remitente);
+  const html = envoltura(plantilla.cuerpo(datos), remitente, plantilla, ctas);
   return { asunto, html, remitente };
+}
+
+/** Traduce las claves elegidas ('sitio', 'whatsapp'...) a botón concreto,
+ *  descartando cualquier clave que no exista en `DEFINICIONES_CTA`. */
+function ctasDe(claves, remitente) {
+  return (claves ?? [])
+    .filter((clave) => clave in DEFINICIONES_CTA)
+    .map((clave) => {
+      const def = DEFINICIONES_CTA[clave];
+      return { texto: def.texto, href: def.href(remitente) };
+    });
 }
 
 /**
@@ -321,9 +345,7 @@ function construir(remitente, plantilla, datos) {
  * deliberadamente sólo color, sin texto: es un acento de diseño para quien
  * arma el correo, no una etiqueta que el cliente deba leer.
  */
-function envoltura(contenidoHtml, remitente, plantilla) {
-  const cta = ctaDe(plantilla, remitente);
-
+function envoltura(contenidoHtml, remitente, plantilla, ctas) {
   return `<!doctype html>
 <html lang="es">
   <head>
@@ -352,7 +374,7 @@ function envoltura(contenidoHtml, remitente, plantilla) {
             <tr>
               <td style="padding:30px 44px 6px;color:#1f2937;font-size:16px;line-height:1.65;">
                 ${contenidoHtml}
-                ${cta ? botonCta(cta) : ''}
+                ${ctas.length > 0 ? botonesCta(ctas) : ''}
               </td>
             </tr>
             <tr>
@@ -386,17 +408,16 @@ function envoltura(contenidoHtml, remitente, plantilla) {
 </html>`;
 }
 
-function ctaDe(plantilla, remitente) {
-  if (plantilla.ctaTipo === 'ninguno') return null;
-  if (plantilla.ctaTipo === 'whatsapp') {
-    return { texto: plantilla.ctaTexto || 'Escribir por WhatsApp', href: waLink(remitente.whatsapp) };
-  }
-  return { texto: plantilla.ctaTexto || 'Visitar byslogistics.com.co', href: EMPRESA.sitioUrl };
+/** Varios botones seguidos, uno por CTA activo — cada uno en su propia
+ *  tabla `inline-block` para que fluyan en una fila y salten de línea solos
+ *  en pantallas angostas. */
+function botonesCta(ctas) {
+  return `<div style="margin:10px 0 6px;">${ctas.map(botonCta).join('')}</div>`;
 }
 
 function botonCta(cta) {
   return `
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:10px 0 6px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="display:inline-block;vertical-align:top;margin:0 8px 8px 0;">
       <tr>
         <td style="border-radius:999px;background:${BRAND.azul700};box-shadow:0 4px 10px -2px rgba(0,81,142,0.45);">
           <a href="${cta.href}" style="display:inline-block;padding:13px 26px;color:#ffffff;text-decoration:none;font-size:14.5px;font-weight:700;letter-spacing:0.01em;">

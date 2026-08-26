@@ -97,15 +97,12 @@
         line-height: 1.55;
       }
 
-      .diseno {
-        display: grid;
-        grid-template-columns: minmax(20rem, 1fr) minmax(22rem, 1.25fr);
-        gap: 1.5rem;
-        align-items: start;
-      }
-
-      @media (max-width: 64rem) {
-        .diseno { grid-template-columns: 1fr; }
+      /* El constructor es lo único que hay en la pantalla normalmente — la
+         vista previa vive detrás del botón flotante, no al lado. Así queda
+         todo el ancho disponible para llenar los campos con comodidad. */
+      .panel-formulario {
+        max-width: 44rem;
+        margin: 0 auto;
       }
 
       .panel {
@@ -166,6 +163,33 @@
         margin: -0.5rem 0 1.25rem;
         font-size: 0.8125rem;
         color: var(--texto-tenue);
+      }
+
+      /* Botones (CTA) del correo -------------------------------------------- */
+
+      .grupo-ctas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+      }
+
+      .casilla-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 999px;
+        border: 1px solid var(--borde-fuerte);
+        background: var(--fondo);
+        color: var(--texto);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .casilla-cta input {
+        width: auto;
+        margin: 0;
       }
 
       /* Adjuntos ----------------------------------------------------------- */
@@ -277,13 +301,46 @@
       }
 
       /* Vista previa --------------------------------------------------------- */
+      /*
+       * La vista previa no vive en la pantalla junto al formulario — el
+       * constructor necesita todo el espacio. Vive escondida (display:none)
+       * hasta que se abre con el botón flotante, y entonces ocupa toda la
+       * ventana, como el botón "Vista previa" del cotizador.
+       */
+
+      .boton-flotante-previa {
+        position: fixed;
+        right: 1.5rem;
+        bottom: 1.5rem;
+        z-index: 100;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1.3rem;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+        color: #fff;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: var(--sombra-alta);
+      }
 
       .previsualizacion {
-        position: sticky;
-        top: 1.5rem;
-        display: flex;
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 200;
         flex-direction: column;
         gap: 0;
+        border-radius: 0;
+        padding: 1.25rem 1.5rem;
+        box-shadow: none;
+      }
+
+      .previsualizacion.abierta {
+        display: flex;
       }
 
       .previsualizacion-cabecera {
@@ -327,7 +384,7 @@
         color: #fff;
       }
 
-      .boton-pantalla-completa {
+      .boton-cerrar-previa {
         border: 1px solid var(--borde-fuerte);
         border-radius: 999px;
         background: var(--fondo-tarjeta);
@@ -338,26 +395,22 @@
         cursor: pointer;
       }
 
+      /* Fondo liso y neutro en vez de las rayas diagonales que había antes —
+         se veían más como un error de carga que como un diseño a propósito. */
       .lienzo-previa {
         flex: 1;
         display: flex;
         justify-content: center;
-        background: repeating-linear-gradient(
-          45deg,
-          var(--fondo),
-          var(--fondo) 10px,
-          var(--borde) 10px,
-          var(--borde) 11px
-        );
+        background: var(--fondo);
         border-radius: 12px;
         padding: 1rem;
         overflow: auto;
       }
 
       .previsualizacion iframe {
-        width: 640px;
+        width: 700px;
         max-width: 100%;
-        height: min(76vh, 900px);
+        height: calc(100vh - 9rem);
         border: 1px solid var(--borde);
         border-radius: 10px;
         background: #fff;
@@ -366,27 +419,6 @@
 
       .previsualizacion[data-ancho='celular'] iframe {
         width: 390px;
-      }
-
-      /* Pantalla completa: cubre TODA la ventana, sin huecos — antes dejaba
-         1rem de margen y por ahí se alcanzaba a ver el encabezado de la
-         página de atrás, encimado con el título "Vista previa". */
-      .previsualizacion.completa {
-        position: fixed;
-        inset: 0;
-        z-index: 200;
-        border-radius: 0;
-        padding: 1.25rem 1.5rem;
-        box-shadow: none;
-        max-height: none;
-      }
-
-      .previsualizacion.completa .lienzo-previa {
-        max-height: none;
-      }
-
-      .previsualizacion.completa iframe {
-        height: calc(100vh - 9rem);
       }
     </style>
   </head>
@@ -402,14 +434,13 @@
       <h1>Enviar correo comercial</h1>
       <p class="intro">
         Elige quién lo firma y qué plantilla usar, llena los datos del cliente, adjunta un archivo
-        si hace falta, y revisa la vista previa a la derecha. Al darle «Enviar» sale de una vez, con
-        la firma y el diseño de B&amp;S Logistics ya puestos.
+        si hace falta, y cuando quieras ver cómo va quedando dale al botón «Vista previa». Al darle
+        «Enviar» sale de una vez, con la firma y el diseño de B&amp;S Logistics ya puestos.
       </p>
     </header>
 
     <main>
-      <div class="diseno">
-        <form class="panel" id="formulario" novalidate>
+      <form class="panel panel-formulario" id="formulario" novalidate>
           <h2>1. Quién firma y qué plantilla</h2>
 
           <div class="fila-dos">
@@ -457,7 +488,21 @@
 
           <div id="campos-plantilla"></div>
 
-          <h2>4. Adjuntos (opcional)</h2>
+          <h2>4. Botones del correo (opcional)</h2>
+          <div class="campo">
+            <div class="grupo-ctas" role="group" aria-label="Botones a incluir en el correo">
+              <label class="casilla-cta"><input type="checkbox" class="cta" value="sitio" /> Página web</label>
+              <label class="casilla-cta"><input type="checkbox" class="cta" value="whatsapp" /> WhatsApp</label>
+              <label class="casilla-cta"><input type="checkbox" class="cta" value="facebook" /> Facebook</label>
+              <label class="casilla-cta"><input type="checkbox" class="cta" value="instagram" /> Instagram</label>
+            </div>
+            <p class="ayuda" style="margin-top:0.5rem;">
+              Marca los que quieras que aparezcan como botón en el correo — puedes elegir varios, uno solo, o
+              ninguno. Cada plantilla marca de entrada los que suele necesitar.
+            </p>
+          </div>
+
+          <h2>5. Adjuntos (opcional)</h2>
           <div class="campo">
             <div class="zona-adjuntos">
               <label class="boton-adjuntar" for="adjuntos">
@@ -487,24 +532,30 @@
           <button class="enviar" type="submit" id="boton-enviar">Enviar correo</button>
           <div class="estado" id="estado" role="status"></div>
         </form>
+      </main>
 
-        <div class="panel previsualizacion" id="previsualizacion" data-ancho="escritorio">
-          <div class="previsualizacion-cabecera">
-            <h2>Vista previa</h2>
-            <div class="controles-previa">
-              <div class="segmentado" role="group" aria-label="Ancho de la vista previa">
-                <button type="button" id="ancho-escritorio" class="activo">Escritorio</button>
-                <button type="button" id="ancho-celular">Celular</button>
-              </div>
-              <button type="button" class="boton-pantalla-completa" id="boton-completa">Pantalla completa</button>
+      <button type="button" class="boton-flotante-previa" id="boton-abrir-previa">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" /><circle cx="12" cy="12" r="3" />
+        </svg>
+        Vista previa
+      </button>
+
+      <div class="panel previsualizacion" id="previsualizacion" data-ancho="escritorio">
+        <div class="previsualizacion-cabecera">
+          <h2>Vista previa</h2>
+          <div class="controles-previa">
+            <div class="segmentado" role="group" aria-label="Ancho de la vista previa">
+              <button type="button" id="ancho-escritorio" class="activo">Escritorio</button>
+              <button type="button" id="ancho-celular">Celular</button>
             </div>
-          </div>
-          <div class="lienzo-previa">
-            <iframe id="vista" title="Vista previa del correo"></iframe>
+            <button type="button" class="boton-cerrar-previa" id="boton-cerrar-previa">✕ Cerrar</button>
           </div>
         </div>
+        <div class="lienzo-previa">
+          <iframe id="vista" title="Vista previa del correo"></iframe>
+        </div>
       </div>
-    </main>
 
     <script type="module">
       import { REMITENTES, PLANTILLAS, previsualizarCorreo, MAXIMO_ADJUNTOS_BYTES } from './plantillas.js';
@@ -525,12 +576,14 @@
       const $errorAdjuntos = document.getElementById('error-adjuntos');
       const $pesoAdjuntos = document.getElementById('peso-adjuntos');
       const $previsualizacion = document.getElementById('previsualizacion');
-      const $botonCompleta = document.getElementById('boton-completa');
+      const $botonAbrirPrevia = document.getElementById('boton-abrir-previa');
+      const $botonCerrarPrevia = document.getElementById('boton-cerrar-previa');
       const $anchoEscritorio = document.getElementById('ancho-escritorio');
       const $anchoCelular = document.getElementById('ancho-celular');
       const $campoCopia = document.getElementById('campo-copia');
       const $copia = document.getElementById('copia');
       const $copiaCorreo = document.getElementById('copia-correo');
+      const $ctas = Array.from(document.querySelectorAll('.cta'));
 
       let asuntoTocadoAMano = false;
       let adjuntos = []; // { nombre, tipo, tamano, contenidoBase64 }
@@ -574,6 +627,12 @@
         return Object.values(datosFormulario()).some((valor) => valor.trim() !== '');
       }
 
+      function ctasActivas() {
+        return $ctas.filter((c) => c.checked).map((c) => c.value);
+      }
+
+      $ctas.forEach((c) => c.addEventListener('change', actualizarVista));
+
       let plantillaAnterior = null;
 
       function pintarCampos() {
@@ -601,6 +660,9 @@
           $camposPlantilla.appendChild(envoltorio);
         }
 
+        const sugeridos = new Set(plantilla.ctasSugeridos);
+        $ctas.forEach((c) => { c.checked = sugeridos.has(c.value); });
+
         asuntoTocadoAMano = false;
         $asuntoAyuda.textContent = 'Se rellena solo según la plantilla; puedes cambiarlo si quieres.';
         plantillaAnterior = $plantilla.value;
@@ -627,7 +689,7 @@
 
         if (!asuntoTocadoAMano) $asunto.value = plantilla.asunto(datos);
 
-        const { html } = previsualizarCorreo($remitente.value, $plantilla.value, datos);
+        const { html } = previsualizarCorreo($remitente.value, $plantilla.value, datos, ctasActivas());
         $vista.srcdoc = html;
       }
 
@@ -647,17 +709,22 @@
       $anchoEscritorio.addEventListener('click', () => elegirAncho('escritorio'));
       $anchoCelular.addEventListener('click', () => elegirAncho('celular'));
 
-      // --- Pantalla completa ---------------------------------------------------
+      // --- Abrir y cerrar la vista previa --------------------------------------
 
-      $botonCompleta.addEventListener('click', () => {
-        const completa = $previsualizacion.classList.toggle('completa');
-        $botonCompleta.textContent = completa ? '✕ Salir de pantalla completa' : 'Pantalla completa';
-      });
+      function abrirPrevia() {
+        actualizarVista();
+        $previsualizacion.classList.add('abierta');
+      }
+      function cerrarPrevia() {
+        $previsualizacion.classList.remove('abierta');
+      }
+
+      $botonAbrirPrevia.addEventListener('click', abrirPrevia);
+      $botonCerrarPrevia.addEventListener('click', cerrarPrevia);
 
       document.addEventListener('keydown', (evento) => {
-        if (evento.key === 'Escape' && $previsualizacion.classList.contains('completa')) {
-          $previsualizacion.classList.remove('completa');
-          $botonCompleta.textContent = 'Pantalla completa';
+        if (evento.key === 'Escape' && $previsualizacion.classList.contains('abierta')) {
+          cerrarPrevia();
         }
       });
 
@@ -789,6 +856,7 @@
               asunto: $asunto.value.trim(),
               datos: datosFormulario(),
               copiaAlRemitente: $copia.checked,
+              ctas: ctasActivas(),
               adjuntos: adjuntos.map((a) => ({
                 nombre: a.nombre,
                 tipo: a.tipo,

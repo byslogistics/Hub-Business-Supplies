@@ -145,7 +145,14 @@ interface PeticionCorreo {
    *  nunca sale de aquí — sale de `correo`, la identidad ya comprobada por
    *  Access, para que nadie pueda pedir copia a una dirección ajena. */
   copiaAlRemitente?: boolean;
+  /** Qué botones (CTA) incluir: 'sitio', 'whatsapp', 'facebook', 'instagram'.
+   *  Si no viene, `renderCorreo` usa los que la plantilla trae sugeridos. */
+  ctas?: string[];
 }
+
+/** Las únicas claves de CTA que existen — cualquier otra cosa que llegue en
+ *  `ctas` se descarta en silencio, igual que hace `ctasDe` en plantillas.js. */
+const CLAVES_CTA_VALIDAS = new Set(['sitio', 'whatsapp', 'facebook', 'instagram']);
 
 /** Ningún correo comercial necesita más destinatarios que esto de una vez. */
 const MAXIMO_DESTINATARIOS = 5;
@@ -200,7 +207,7 @@ async function enviarCorreo(
     throw new ErrorPeticion(400, 'invalida', 'El cuerpo no es JSON válido.');
   }
 
-  const { remitenteId, plantillaId, destinatario, asunto, datos, adjuntos, copiaAlRemitente } = cuerpo;
+  const { remitenteId, plantillaId, destinatario, asunto, datos, adjuntos, copiaAlRemitente, ctas } = cuerpo;
 
   if (!remitenteId || !(remitenteId in REMITENTES)) {
     throw new ErrorPeticion(400, 'invalida', 'Ese remitente no existe.');
@@ -209,10 +216,11 @@ async function enviarCorreo(
     throw new ErrorPeticion(400, 'invalida', 'Esa plantilla no existe.');
   }
   const destinatarios = parsearDestinatarios(destinatario);
+  const ctasActivos = Array.isArray(ctas) ? ctas.filter((c) => CLAVES_CTA_VALIDAS.has(c)) : undefined;
 
   let generado: ReturnType<typeof renderCorreo>;
   try {
-    generado = renderCorreo(remitenteId, plantillaId, datos ?? {});
+    generado = renderCorreo(remitenteId, plantillaId, datos ?? {}, ctasActivos);
   } catch (error) {
     throw new ErrorPeticion(400, 'invalida', error instanceof Error ? error.message : 'Datos inválidos.');
   }
@@ -255,8 +263,19 @@ async function enviarCorreo(
   return { enviado: true, id };
 }
 
+/** Los mismos tipos que deja elegir `correo/index.html` en el `accept` del
+ *  input — se repite aquí porque el navegador es sólo la primera línea de
+ *  defensa, nunca la que cuenta. */
+const EXTENSIONES_ADJUNTOS_PERMITIDAS = new Set([
+  'pdf', 'jpg', 'jpeg', 'png', 'webp', 'xlsx', 'xls', 'docx', 'doc',
+]);
+
+function extensionDe(nombre: string): string {
+  return nombre.split('.').pop()?.toLowerCase() ?? '';
+}
+
 /**
- * Revisa la cantidad y el peso de los adjuntos antes de mandarlos.
+ * Revisa el tipo, la cantidad y el peso de los adjuntos antes de mandarlos.
  *
  * `contenidoBase64` no se decodifica entero para pesarlo — de un texto en
  * base64 el tamaño real se calcula con su longitud, sin necesidad de volverlo
@@ -277,6 +296,9 @@ function validarAdjuntos(adjuntos: AdjuntoRecibido[] | undefined): { nombre: str
     const contenidoBase64 = (adjunto?.contenidoBase64 ?? '').trim();
     if (!nombre || !contenidoBase64) {
       throw new ErrorPeticion(400, 'invalida', 'Uno de los adjuntos llegó incompleto.');
+    }
+    if (!EXTENSIONES_ADJUNTOS_PERMITIDAS.has(extensionDe(nombre))) {
+      throw new ErrorPeticion(400, 'invalida', `«${nombre}» no es un tipo de archivo permitido.`);
     }
 
     pesoTotal += tamanoDeBase64(contenidoBase64);

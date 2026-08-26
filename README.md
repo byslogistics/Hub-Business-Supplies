@@ -92,30 +92,44 @@ escribir HTML.
 
 Quien manda elige **quién firma** (por ahora Paola Vargas o Yeimy Mahecha),
 **qué plantilla** usar y llena unos pocos campos —nombre del cliente,
-mensaje—. Hay seis plantillas, cada una con su pastilla de categoría y su
-botón de llamada a la acción (al sitio web, al WhatsApp de quien firma, o
-ninguno cuando no aplica): presentación comercial, seguimiento a una
-cotización, oferta puntual, reactivar un cliente, agradecimiento de compra y
-recordatorio de pago.
+mensaje—. Hay siete plantillas: presentación comercial, seguimiento a una
+cotización, oferta puntual, reactivar un cliente, agradecimiento de compra,
+recordatorio de pago, y una plantilla libre en blanco para cuando ninguna de
+las anteriores encaja.
 
 El mensaje libre no es texto plano a secas: una línea que empiece con `- ` se
-vuelve viñeta, `**así**` sale en negrita, `*así*` en cursiva, y un enlace
-suelto (`https://…`) queda subrayado y en azul. Sigue sin admitir HTML de
-verdad — todo se escapa primero y el formato se aplica después, así que nada
-de lo que alguien escriba puede colarse como una etiqueta.
+vuelve viñeta, `**así**` sale en negrita, `*así*` en cursiva, un enlace suelto
+(`https://…`) queda subrayado y en azul, y un enlace con texto propio se
+escribe `[así](https://…)`. Sigue sin admitir HTML de verdad — todo se escapa
+primero y el formato se aplica después, así que nada de lo que alguien
+escriba puede colarse como una etiqueta.
 
-La pantalla de la izquierda pinta los campos según la plantilla elegida; la de
-la derecha enseña una vista previa grande del correo —con vista de escritorio
-o de celular, y un botón de pantalla completa—, que se actualiza en cada tecla
-sin esperar a que los campos obligatorios estén completos. Al darle «Enviar»
-se manda de una vez.
+**Los botones (CTA) se eligen al armar el correo, no vienen fijos en la
+plantilla.** Una fila de casillas deja marcar cualquier combinación de página
+web, WhatsApp, Facebook e Instagram — cada plantilla trae marcadas de entrada
+las que suele necesitar, pero se pueden cambiar antes de mandar. Ver
+`DEFINICIONES_CTA` en `correo/plantillas.js` para añadir un botón nuevo.
 
-**Se pueden adjuntar archivos.** El botón «Adjuntar archivo» deja pegar hasta
-cinco (por ejemplo, el PDF de una cotización ya descargada desde el
-Cotizador), con un tope de 8&nbsp;MB en total. El navegador los lee en base64
-y los manda junto con el resto del formulario; el Worker vuelve a comprobar la
-cantidad y el peso antes de pasarlos a Resend — el límite del navegador es
-sólo para avisar antes, no el que de verdad cuenta.
+**Puede llevar varios destinatarios.** El campo de correo del cliente admite
+varias direcciones separadas por coma (hasta cinco); el Worker las vuelve a
+validar todas antes de mandar. También hay una casilla para que quien envía
+se lleve una copia — a su propio correo de acceso, nunca a uno escrito a
+mano.
+
+El constructor ocupa toda la pantalla — la vista previa no se ve todo el
+tiempo al lado, vive detrás del botón flotante «Vista previa» de la esquina,
+igual que en el Cotizador. Al abrirla se ve el correo completo, con un
+interruptor para alternar entre escritorio y celular, y se actualiza en cada
+tecla sin esperar a que los campos obligatorios estén completos.
+
+**Se pueden adjuntar archivos.** El botón «Adjuntar archivo» sólo deja elegir
+PDF, imágenes, Excel o Word, hasta cinco archivos (por ejemplo, el PDF de una
+cotización ya descargada desde el Cotizador), con un tope de 8&nbsp;MB en
+total — se ve el peso acumulado junto a la lista. El navegador los lee en
+base64 y los manda junto con el resto del formulario; el Worker vuelve a
+comprobar el tipo, la cantidad y el peso antes de pasarlos a Resend — lo que
+avisa el navegador es sólo para no hacer esperar a la vendedora, lo que de
+verdad cuenta es la comprobación del servidor.
 
 **Todo lo editable vive en un solo archivo:** `correo/plantillas.js`. Ahí están
 los datos de cada vendedora (nombre, cargo, WhatsApp, a qué correo llegan las
