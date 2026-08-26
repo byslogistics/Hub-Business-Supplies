@@ -456,13 +456,20 @@ Necesita una llave, que se pone una sola vez:
    secret**, con nombre `CLOUDFLARE_API_TOKEN` y el valor que imprimió
    Cloudflare (sólo se enseña una vez).
 
-Eso es todo: **a qué cuenta pertenece no se pregunta**, se lee del
-`account_id` de `wrangler.jsonc`. Ese dato está escrito ahí a propósito y no
-es un secreto —es el identificador que sale en la URL del panel, de la misma
-clase que el `database_id` que ya estaba—. Sin él, wrangler empieza pidiendo
-la lista de cuentas del usuario, y un token acotado a D1 no tiene permiso
-para leerla: falla antes de tocar nada, con un error sobre permisos que no es
-lo que pasa. Pasó de verdad la primera vez que corrió este flujo.
+Eso es todo: **a qué cuenta pertenece no se pregunta**, sale del `account_id`
+de `wrangler.jsonc`. Ese dato está escrito ahí a propósito y no es un secreto
+—es el identificador que aparece en la URL del panel, de la misma clase que el
+`database_id` que ya estaba—. Sin él, wrangler empieza pidiendo la lista de
+cuentas del usuario, y un token acotado a D1 no tiene permiso para leerla:
+falla antes de tocar nada, con un error sobre permisos incorrectos que no es
+lo que pasa. Pasó de verdad las dos primeras veces que corrió este flujo.
+
+El flujo, además, copia ese `account_id` a la variable `CLOUDFLARE_ACCOUNT_ID`
+antes de llamar a wrangler. Parece redundante y no lo es: el subcomando
+`d1 migrations list --remote` pide la autenticación con una configuración
+vacía, así que no llega a mirar el archivo y sólo le queda la variable. Se lee
+del propio `wrangler.jsonc` para no acabar con el mismo dato escrito en dos
+sitios que se desincronizan.
 
 Si falta cualquiera de los dos, el flujo se detiene en el primer paso diciendo
 cuál y dónde se consigue, en vez de dejar que wrangler falle a su manera.

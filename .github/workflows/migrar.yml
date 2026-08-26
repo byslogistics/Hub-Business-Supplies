@@ -46,14 +46,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Antes de instalar nada: sin estos dos datos, `wrangler` falla con
-      # errores que no dicen qué hay que hacer.
+      # Antes de instalar nada: sin la llave y sin la cuenta, `wrangler` falla
+      # con errores que no dicen qué hay que hacer.
       #
-      # La cuenta no se pregunta a Cloudflare, se lee de `wrangler.jsonc`. Un
-      # token acotado a D1 no tiene permiso para listar las cuentas del
-      # usuario, así que dejar que wrangler la adivine falla antes de tocar
-      # nada — con un mensaje sobre permisos que no es lo que pasa.
-      - name: Comprobar la llave y la cuenta
+      # La cuenta se saca de `wrangler.jsonc` y se pasa por variable de
+      # entorno, aunque el archivo ya la traiga. No es redundancia: el
+      # subcomando `d1 migrations list --remote` pide la autenticación con una
+      # configuración vacía —`requireAuth({})`, se ve en el código de
+      # wrangler—, así que el `account_id` del archivo no lo llega a mirar y
+      # sólo le queda la variable. Se lee del mismo archivo para no tener el
+      # dato escrito en dos sitios.
+      #
+      # Sin ella, wrangler intenta adivinar la cuenta preguntando cuáles tiene
+      # el usuario, y un token acotado a D1 no tiene permiso para leer esa
+      # lista: falla antes de tocar nada, con un mensaje sobre permisos
+      # incorrectos que no es lo que pasa.
+      - name: Comprobar la llave y leer la cuenta
         env:
           TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
@@ -64,13 +72,19 @@ jobs:
             echo "Está explicado en el README, sección «Publicar»."
             exit 1
           fi
-          if ! grep -q '"account_id"' wrangler.jsonc; then
+
+          CUENTA=$(grep -o '"account_id"[[:space:]]*:[[:space:]]*"[^"]*"' wrangler.jsonc \
+            | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+
+          if [ -z "$CUENTA" ]; then
             echo "::error::Falta account_id en wrangler.jsonc."
             echo "Es el identificador que sale en la URL del panel de Cloudflare"
             echo "(dash.cloudflare.com/<ID>/workers) y en Workers & Pages, a la derecha."
-            echo "Sin él, wrangler intenta adivinar la cuenta y un token acotado no puede."
             exit 1
           fi
+
+          echo "Cuenta: $CUENTA"
+          echo "CLOUDFLARE_ACCOUNT_ID=$CUENTA" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
