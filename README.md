@@ -455,11 +455,17 @@ Necesita una llave, que se pone una sola vez:
 2. En GitHub, **Settings → Secrets and variables → Actions → New repository
    secret**, con nombre `CLOUDFLARE_API_TOKEN` y el valor que imprimió
    Cloudflare (sólo se enseña una vez).
-3. Si la cuenta de Cloudflare tiene más de una organización, hace falta además
-   el secreto `CLOUDFLARE_ACCOUNT_ID`; con una sola, el flujo lo deduce.
 
-Sin el secreto, el flujo se detiene en el primer paso diciendo qué falta, en
-vez de fallar con un error de autenticación que no explica nada.
+Eso es todo: **a qué cuenta pertenece no se pregunta**, se lee del
+`account_id` de `wrangler.jsonc`. Ese dato está escrito ahí a propósito y no
+es un secreto —es el identificador que sale en la URL del panel, de la misma
+clase que el `database_id` que ya estaba—. Sin él, wrangler empieza pidiendo
+la lista de cuentas del usuario, y un token acotado a D1 no tiene permiso
+para leerla: falla antes de tocar nada, con un error sobre permisos que no es
+lo que pasa. Pasó de verdad la primera vez que corrió este flujo.
+
+Si falta cualquiera de los dos, el flujo se detiene en el primer paso diciendo
+cuál y dónde se consigue, en vez de dejar que wrangler falle a su manera.
 
 **Aun así, para una migración delicada conviene correr `npm run migrar` a mano
 antes de mezclar a `main`.** El flujo arranca a la vez que la construcción de

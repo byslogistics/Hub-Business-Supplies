@@ -4,6 +4,14 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-01",
 
+  // La cuenta de Cloudflare donde vive todo esto. No es un secreto —es el
+  // mismo identificador que sale en la URL del panel, del orden del
+  // `database_id` de aquí abajo— y está escrito a propósito: sin él, wrangler
+  // empieza preguntando a qué cuenta pertenece el token, y un token acotado a
+  // lo suyo (D1, o sólo desplegar) no tiene permiso para leer esa lista y
+  // falla antes de hacer nada. Le pasó al flujo que aplica las migraciones.
+  "account_id": "95a7710834c8bff72bce596fa8ee852a",
+
   // Encendido: por ahora no hay un dominio propio conectado a Cloudflare (el
   // DNS de byslogistics.com.co se queda en GoDaddy), así que esta dirección
   // -- hub-business-supplies.<cuenta>.workers.dev -- es la entrada real.
