@@ -428,8 +428,19 @@ npm run migrar:local    # y en la de pruebas, para el `npm run dev`
 Los dos comandos se vuelven a correr cada vez que aparece un archivo nuevo en
 `migraciones/`: aplican sólo lo que falte y no repiten lo ya aplicado. La
 `0002_papelera.sql` —las dos columnas de la papelera— y la `0003_moneda.sql`
-—la moneda, la tasa y el total en divisa— son dos de ésas: sin ellas, el
-historial responde con un fallo al listar.
+—la moneda, la tasa y el total en divisa— son dos de ésas.
+
+**Esto no lo hace el despliegue.** Cada empuje a `main` publica el código
+solo, pero la base no se toca: Cloudflare no sabe qué hay en `migraciones/`.
+Si el código nuevo llega a una base sin migrar, el historial responde «La
+operación falló» a todo —lista y emisión—, porque sus consultas nombran
+columnas que ahí no existen. Armar la cotización y bajar el PDF siguen
+funcionando; lo que se cae es guardarla.
+
+**Conviene migrar antes de desplegar, no después.** Añadir columnas no molesta
+al código viejo —tienen valor por defecto y él ni las nombra—, así que la base
+puede ir por delante sin que nadie lo note. Al revés hay un rato, entre el
+despliegue y el comando, con el historial caído.
 
 ### 3. Poner la puerta: Cloudflare Access
 

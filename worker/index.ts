@@ -845,7 +845,11 @@ function aResumen(fila: Record<string, unknown>): ResumenCotizacion {
     nit: String(fila.cliente_nit ?? ''),
     contacto: String(fila.cliente_contacto ?? ''),
     total: Number(fila.total ?? 0),
-    totalMoneda: Number(fila.total_divisa ?? fila.total ?? 0),
+    // `?? ` no basta: la columna se añadió con `DEFAULT 0`, así que una fila
+    // escrita entre la migración y el despliegue del código nuevo trae un cero
+    // de verdad, no un nulo, y se enseñaría como «$ 0» en el listado. Esas
+    // filas son de antes de las divisas y su total en moneda es su total.
+    totalMoneda: Number(fila.total_divisa) || Number(fila.total ?? 0),
     moneda: esMoneda(fila.moneda) ? (fila.moneda as Moneda) : 'COP',
     tasa: Number(fila.tasa) > 0 ? Number(fila.tasa) : 1,
     unidades: Number(fila.unidades ?? 0),
