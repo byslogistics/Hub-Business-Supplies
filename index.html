@@ -52,12 +52,6 @@
         --borde-fuerte: rgb(0 96 168 / 0.4);
         --sombra: 0 1px 2px rgb(0 32 58 / 0.06), 0 8px 24px -12px rgb(0 32 58 / 0.18);
         --sombra-alta: 0 2px 4px rgb(0 32 58 / 0.08), 0 18px 40px -16px rgb(0 32 58 / 0.3);
-        --icono-fondo: linear-gradient(140deg, var(--brand-100), var(--brand-50));
-        --icono-color: var(--brand-600);
-        --icono-borde: rgb(0 96 168 / 0.16);
-        --etiqueta-fondo: rgb(0 96 168 / 0.08);
-        --etiqueta-texto: var(--brand-700);
-        --etiqueta-borde: rgb(0 96 168 / 0.18);
 
         --fuente:
           ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
@@ -86,12 +80,6 @@
           --borde-fuerte: rgb(174 216 240 / 0.45);
           --sombra: 0 1px 2px rgb(0 16 32 / 0.4), 0 8px 24px -12px rgb(0 16 32 / 0.7);
           --sombra-alta: 0 2px 4px rgb(0 16 32 / 0.5), 0 22px 45px -18px rgb(0 16 32 / 0.85);
-          --icono-fondo: linear-gradient(140deg, rgb(60 153 212 / 0.3), rgb(0 96 168 / 0.16));
-          --icono-color: var(--brand-200);
-          --icono-borde: rgb(174 216 240 / 0.22);
-          --etiqueta-fondo: rgb(255 255 255 / 0.09);
-          --etiqueta-texto: var(--brand-200);
-          --etiqueta-borde: rgb(255 255 255 / 0.14);
         }
       }
 
@@ -193,7 +181,7 @@
 
       .intro {
         max-width: 40rem;
-        margin-bottom: 2.5rem;
+        margin-bottom: 2rem;
       }
 
       .intro h1 {
@@ -221,12 +209,18 @@
         color: var(--texto-suave);
       }
 
-      /* Tarjetas --------------------------------------------------------- */
+      /* Tarjetas ----------------------------------------------------------
+         Compactas a propósito: nombre, una línea de descripción y listo. La
+         tarjeta entera es el enlace — no hay un botón "Abrir" aparte, la
+         flecha de la derecha ya lo dice. Cada una lleva un color de acento
+         distinto (variable `--acento` de la clase `tarjeta--*`) para
+         diferenciarlas de un vistazo en la rejilla.
+         -------------------------------------------------------------------- */
 
       .herramientas {
         display: grid;
-        gap: 1.25rem;
-        grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+        gap: 0.875rem;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
         list-style: none;
         margin: 0;
         padding: 0;
@@ -234,52 +228,32 @@
 
       .tarjeta {
         position: relative;
-        isolation: isolate;
         display: flex;
-        flex-direction: column;
-        height: 100%;
-        padding: 1.75rem;
+        align-items: center;
+        gap: 0.9rem;
+        padding: 1rem 1.15rem;
         border: 1px solid var(--borde);
-        border-radius: 20px;
+        border-radius: 16px;
         background: var(--fondo-tarjeta);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         box-shadow: var(--sombra);
         text-decoration: none;
-        overflow: hidden;
         transition:
-          transform 0.18s ease,
-          box-shadow 0.18s ease,
-          border-color 0.18s ease;
-      }
-
-      /* Brillo que se enciende al pasar el cursor: un velo azul muy suave
-         que sale de la esquina superior. Vive en un pseudo-elemento para no
-         tocar el fondo real de la tarjeta. */
-      .tarjeta::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        background: radial-gradient(28rem 14rem at 20% 0%, rgb(60 153 212 / 0.22), transparent 70%);
-        opacity: 0;
-        transition: opacity 0.22s ease;
-      }
-
-      .tarjeta:hover::before,
-      .tarjeta:focus-visible::before {
-        opacity: 1;
+          transform 0.16s ease,
+          box-shadow 0.16s ease,
+          border-color 0.16s ease;
       }
 
       .tarjeta:hover,
       .tarjeta:focus-visible {
-        transform: translateY(-4px);
-        border-color: var(--borde-fuerte);
+        transform: translateY(-3px);
+        border-color: var(--acento);
         box-shadow: var(--sombra-alta);
       }
 
       .tarjeta:focus-visible {
-        outline: 3px solid var(--brand-500);
+        outline: 3px solid var(--acento);
         outline-offset: 3px;
       }
 
@@ -288,8 +262,7 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .tarjeta,
-        .tarjeta::before {
+        .tarjeta {
           transition: none;
         }
         .tarjeta:hover,
@@ -299,159 +272,102 @@
         }
       }
 
-      /* Fila de arriba: el icono a la izquierda y la etiqueta a la derecha. */
-      .tarjeta-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
-      }
-
       .icono {
+        flex-shrink: 0;
         display: grid;
         place-items: center;
-        width: 3rem;
-        height: 3rem;
-        border-radius: 14px;
-        border: 1px solid var(--icono-borde);
-        background: var(--icono-fondo);
-        color: var(--icono-color);
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 12px;
+        border: 1px solid var(--acento-borde);
+        background: var(--acento-fondo);
+        color: var(--acento);
       }
 
       .icono svg {
-        width: 1.5rem;
-        height: 1.5rem;
+        width: 1.35rem;
+        height: 1.35rem;
       }
 
-      /* Etiqueta: dice de un vistazo si la herramienta vive aquí mismo o si
-         se va a abrir en otra pestaña. */
-      .etiqueta {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.3rem 0.65rem;
-        border: 1px solid var(--etiqueta-borde);
-        border-radius: 999px;
-        background: var(--etiqueta-fondo);
-        color: var(--etiqueta-texto);
-        font-size: 0.6875rem;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-        white-space: nowrap;
-      }
-
-      .etiqueta svg {
-        width: 0.75rem;
-        height: 0.75rem;
+      .tarjeta-texto {
+        min-width: 0;
+        flex: 1;
       }
 
       .tarjeta h2 {
-        margin: 0 0 0.5rem;
-        font-size: 1.25rem;
+        margin: 0 0 0.15rem;
+        font-size: 1rem;
         font-weight: 650;
         letter-spacing: -0.01em;
       }
 
       .tarjeta p {
-        margin: 0 0 1.5rem;
-        font-size: 0.9375rem;
-        line-height: 1.55;
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.4;
         color: var(--texto-suave);
-      }
-
-      /* Botón ------------------------------------------------------------
-         No es un <button> de verdad: la tarjeta entera ya es el enlace, así
-         que esto es la parte que se ve como botón. Empujado con `margin-top:
-         auto` para que, con descripciones de distinto largo, los tres queden
-         alineados abajo. */
-      .ir {
-        position: relative;
         overflow: hidden;
-        margin-top: auto;
-        align-self: flex-start;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.6rem 1.15rem;
-        border-radius: 999px;
-        background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
-        color: #fff;
-        font-size: 0.9375rem;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-        box-shadow:
-          inset 0 1px 0 rgb(255 255 255 / 0.25),
-          0 6px 16px -8px rgb(0 96 168 / 0.9);
-        transition:
-          transform 0.18s ease,
-          box-shadow 0.18s ease,
-          filter 0.18s ease;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
       }
 
-      /* Destello que cruza el botón cuando el cursor entra a la tarjeta. */
-      .ir::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -60%;
-        width: 45%;
-        height: 100%;
-        background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.35), transparent);
-        transform: skewX(-18deg);
-        transition: left 0.55s ease;
+      .flecha {
+        flex-shrink: 0;
+        color: var(--acento);
+        transition: transform 0.16s ease;
       }
 
-      .tarjeta:hover .ir,
-      .tarjeta:focus-visible .ir {
-        transform: translateY(-1px);
-        filter: brightness(1.08);
-        box-shadow:
-          inset 0 1px 0 rgb(255 255 255 / 0.3),
-          0 10px 22px -8px rgb(0 96 168 / 1);
-      }
-
-      .tarjeta:hover .ir::after,
-      .tarjeta:focus-visible .ir::after {
-        left: 130%;
-      }
-
-      .tarjeta:active .ir {
-        transform: translateY(0);
-        filter: brightness(0.96);
-      }
-
-      .ir svg {
-        width: 1rem;
-        height: 1rem;
-        transition: transform 0.18s ease;
-      }
-
-      .tarjeta:hover .ir svg,
-      .tarjeta:focus-visible .ir svg {
+      .tarjeta:hover .flecha,
+      .tarjeta:focus-visible .flecha {
         transform: translateX(3px);
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .ir,
-        .ir::after,
-        .ir svg {
+        .flecha {
           transition: none;
         }
-        .tarjeta:hover .ir,
-        .tarjeta:focus-visible .ir,
-        .tarjeta:active .ir {
+        .tarjeta:hover .flecha,
+        .tarjeta:focus-visible .flecha {
           transform: none;
         }
-        .tarjeta:hover .ir::after,
-        .tarjeta:focus-visible .ir::after {
-          left: -60%;
-        }
-        .tarjeta:hover .ir svg,
-        .tarjeta:focus-visible .ir svg {
-          transform: none;
-        }
+      }
+
+      /* Colores de acento, uno por herramienta. Los del tema oscuro salen
+         más claros para seguir leyéndose sobre el fondo azul oscuro. */
+      .tarjeta--azul {
+        --acento: var(--brand-600);
+        --acento-fondo: rgb(0 96 168 / 0.1);
+        --acento-borde: rgb(0 96 168 / 0.18);
+      }
+      .tarjeta--verde {
+        --acento: #0f8a5f;
+        --acento-fondo: rgb(15 138 95 / 0.1);
+        --acento-borde: rgb(15 138 95 / 0.2);
+      }
+      .tarjeta--morado {
+        --acento: #6d4aad;
+        --acento-fondo: rgb(109 74 173 / 0.1);
+        --acento-borde: rgb(109 74 173 / 0.2);
+      }
+      .tarjeta--naranja {
+        --acento: #c2660a;
+        --acento-fondo: rgb(194 102 10 / 0.1);
+        --acento-borde: rgb(194 102 10 / 0.2);
+      }
+      .tarjeta--rosa {
+        --acento: #c2255c;
+        --acento-fondo: rgb(194 37 92 / 0.1);
+        --acento-borde: rgb(194 37 92 / 0.2);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .tarjeta--azul { --acento: var(--brand-300); }
+        .tarjeta--verde { --acento: #3ecb95; }
+        .tarjeta--morado { --acento: #b79ce0; }
+        .tarjeta--naranja { --acento: #f0a856; }
+        .tarjeta--rosa { --acento: #f083ab; }
       }
 
       /* Pie -------------------------------------------------------------- */
@@ -525,330 +441,229 @@
       <!-- ====================================================================
            LAS HERRAMIENTAS
 
-           Cada herramienta es un <li> con su <a class="tarjeta">. Para agregar
-           una nueva: copia un bloque entero, cambia el `href`, el título, la
-           descripción, la etiqueta y el icono. No hay que tocar nada más — la
+           Cada herramienta es un <li> con su <a class="tarjeta tarjeta--COLOR">.
+           Para agregar una nueva: copia un bloque entero y cambia el `href`,
+           el color (tarjeta--azul / verde / morado / naranja / rosa), el
+           icono, el título y la descripción. No hay que tocar nada más — la
            rejilla se reacomoda sola.
 
-           Para cambiarle el destino a una que ya está: solo el `href`.
+           Los enlaces externos (`target="_blank"`) llevan además un
+           `.solo-lectores` después del título avisando que abren pestaña
+           nueva — no hay ya una etiqueta visible para eso, para que la
+           tarjeta se quede compacta, pero quien use lector de pantalla
+           necesita saberlo igual.
 
-           La etiqueta de arriba a la derecha dice si la herramienta vive aquí
-           («En el hub») o si se abre en otra pestaña («Pestaña nueva»). Si
-           cambias un `href` de interno a externo —o al revés—, cámbiale
-           también la etiqueta, el `target` y el texto para lectores de
-           pantalla.
-
-           El cotizador y el correo comercial son las únicas que NO llevan
-           enlace externo: viven en este mismo repositorio y se sirven desde
-           este mismo dominio. Por eso sus tarjetas no abren pestaña nueva —
-           no están saliendo a ningún sitio.
-
+           El cotizador y el correo comercial son las únicas que NO abren
+           pestaña nueva: viven en este mismo repositorio y se sirven desde
+           este mismo dominio.
            ==================================================================== -->
       <ul class="herramientas">
         <li>
           <a
-            class="tarjeta"
+            class="tarjeta tarjeta--azul"
             href="https://byslogistics.com.co/"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span class="tarjeta-top">
-              <span class="icono" aria-hidden="true">
-                <!-- Globo -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M3 12h18" />
-                  <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z" />
-                </svg>
-              </span>
-              <span class="etiqueta">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M14 4h6v6" />
-                  <path d="M20 4 10 14" />
-                  <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
-                </svg>
-                Pestaña nueva
-              </span>
-            </span>
-            <h2>Página web</h2>
-            <p>
-              El sitio público de B&amp;S Logistics: catálogo de productos, servicios y formulario
-              de contacto.
-            </p>
-            <span class="ir">
-              Abrir
-              <span class="solo-lectores">la página web, en una pestaña nueva</span>
+            <span class="icono" aria-hidden="true">
+              <!-- Globo -->
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1.75"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                aria-hidden="true"
               >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18" />
+                <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z" />
               </svg>
             </span>
+            <span class="tarjeta-texto">
+              <h2>Página web<span class="solo-lectores"> (se abre en una pestaña nueva)</span></h2>
+              <p>El sitio público de B&amp;S Logistics.</p>
+            </span>
+            <svg
+              class="flecha"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </li>
 
         <li>
-          <a class="tarjeta" href="./cotizador/">
-            <span class="tarjeta-top">
-              <span class="icono" aria-hidden="true">
-                <!-- Documento con cálculo -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
-                  <path d="M14 3v5h5" />
-                  <path d="M9 13h6" />
-                  <path d="M9 17h4" />
-                </svg>
-              </span>
-              <span class="etiqueta">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3 10.5 12 4l9 6.5" />
-                  <path d="M5 10v9h14v-9" />
-                </svg>
-                En el hub
-              </span>
-            </span>
-            <h2>Cotizador</h2>
-            <p>
-              Arma la cotización desde el listado de precios, genera el PDF formal y el mensaje de
-              WhatsApp, y guarda el historial de todo lo emitido.
-            </p>
-            <span class="ir">
-              Abrir
-              <span class="solo-lectores">el cotizador</span>
+          <a class="tarjeta tarjeta--verde" href="./cotizador/">
+            <span class="icono" aria-hidden="true">
+              <!-- Documento con cálculo -->
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1.75"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                aria-hidden="true"
               >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+                <path d="M14 3v5h5" />
+                <path d="M9 13h6" />
+                <path d="M9 17h4" />
               </svg>
             </span>
+            <span class="tarjeta-texto">
+              <h2>Cotizador</h2>
+              <p>Arma la cotización, genera el PDF y guarda el historial.</p>
+            </span>
+            <svg
+              class="flecha"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </li>
 
         <li>
-          <a class="tarjeta" href="./correo/">
-            <span class="tarjeta-top">
-              <span class="icono" aria-hidden="true">
-                <!-- Sobre -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="3" y="5" width="18" height="14" rx="2" />
-                  <path d="m3 7 9 6 9-6" />
-                </svg>
-              </span>
-              <span class="etiqueta">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3 10.5 12 4l9 6.5" />
-                  <path d="M5 10v9h14v-9" />
-                </svg>
-                En el hub
-              </span>
-            </span>
-            <h2>Correo comercial</h2>
-            <p>
-              Elige quién firma y qué plantilla usar, llena los datos del cliente y envía el correo
-              ya diseñado con la firma de la empresa, sin salir del hub.
-            </p>
-            <span class="ir">
-              Abrir
-              <span class="solo-lectores">el envío de correo comercial</span>
+          <a class="tarjeta tarjeta--morado" href="./correo/">
+            <span class="icono" aria-hidden="true">
+              <!-- Sobre -->
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1.75"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                aria-hidden="true"
               >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
               </svg>
             </span>
+            <span class="tarjeta-texto">
+              <h2>Correo comercial</h2>
+              <p>Envía correos con plantillas y la firma de la empresa.</p>
+            </span>
+            <svg
+              class="flecha"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </li>
 
         <li>
           <a
-            class="tarjeta"
+            class="tarjeta tarjeta--naranja"
             href="https://bys-logistics.abrinay1997.workers.dev/admin/overview"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span class="tarjeta-top">
-              <span class="icono" aria-hidden="true">
-                <!-- Conversación -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M8 14H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v1" />
-                  <path d="M11 20h5l4 3v-3a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-9a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3Z" />
-                </svg>
-              </span>
-              <span class="etiqueta">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M14 4h6v6" />
-                  <path d="M20 4 10 14" />
-                  <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
-                </svg>
-                Pestaña nueva
-              </span>
-            </span>
-            <h2>CRM · Chatbot</h2>
-            <p>
-              Panel del bot multicanal: conversaciones de WhatsApp y Telegram, leads capturados y
-              conexiones.
-            </p>
-            <span class="ir">
-              Abrir
-              <span class="solo-lectores">el CRM del chatbot, en una pestaña nueva</span>
+            <span class="icono" aria-hidden="true">
+              <!-- Conversación -->
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1.75"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                aria-hidden="true"
               >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
+                <path d="M8 14H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v1" />
+                <path d="M11 20h5l4 3v-3a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-9a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3Z" />
               </svg>
             </span>
+            <span class="tarjeta-texto">
+              <h2>CRM · Chatbot<span class="solo-lectores"> (se abre en una pestaña nueva)</span></h2>
+              <p>Conversaciones de WhatsApp y Telegram, y leads.</p>
+            </span>
+            <svg
+              class="flecha"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </li>
 
         <li>
           <a
-            class="tarjeta"
+            class="tarjeta tarjeta--rosa"
             href="https://github.com/byslogistics/byslogistics-web/upload/main/%F0%9F%93%A4SUBIR-CONTENIDO"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span class="tarjeta-top">
-              <span class="icono" aria-hidden="true">
-                <!-- Subir -->
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M12 3v12" />
-                  <path d="m7 8 5-5 5 5" />
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                </svg>
-              </span>
-              <span class="etiqueta">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M14 4h6v6" />
-                  <path d="M20 4 10 14" />
-                  <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
-                </svg>
-                Pestaña nueva
-              </span>
-            </span>
-            <h2>Subir contenido</h2>
-            <p>
-              Sube imágenes, videos y demás material directo a la carpeta de contenido de la página
-              web, sin necesidad de instalar nada.
-            </p>
-            <span class="ir">
-              Abrir
-              <span class="solo-lectores">la carpeta para subir contenido a la página web, en una pestaña nueva</span>
+            <span class="icono" aria-hidden="true">
+              <!-- Subir -->
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1.75"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                aria-hidden="true"
               >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
+                <path d="M12 3v12" />
+                <path d="m7 8 5-5 5 5" />
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               </svg>
             </span>
+            <span class="tarjeta-texto">
+              <h2>Subir contenido<span class="solo-lectores"> (se abre en una pestaña nueva)</span></h2>
+              <p>Sube imágenes y videos a la página web.</p>
+            </span>
+            <svg
+              class="flecha"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </li>
       </ul>
