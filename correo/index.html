@@ -368,13 +368,16 @@
         width: 390px;
       }
 
-      /* Pantalla completa: la tarjeta se despega y ocupa casi toda la ventana. */
+      /* Pantalla completa: cubre TODA la ventana, sin huecos — antes dejaba
+         1rem de margen y por ahí se alcanzaba a ver el encabezado de la
+         página de atrás, encimado con el título "Vista previa". */
       .previsualizacion.completa {
         position: fixed;
-        inset: 1rem;
-        top: 1rem;
-        z-index: 80;
-        box-shadow: var(--sombra-alta);
+        inset: 0;
+        z-index: 200;
+        border-radius: 0;
+        padding: 1.25rem 1.5rem;
+        box-shadow: none;
         max-height: none;
       }
 
@@ -383,7 +386,7 @@
       }
 
       .previsualizacion.completa iframe {
-        height: calc(100vh - 10rem);
+        height: calc(100vh - 9rem);
       }
     </style>
   </head>
@@ -583,7 +586,14 @@
 
       $botonCompleta.addEventListener('click', () => {
         const completa = $previsualizacion.classList.toggle('completa');
-        $botonCompleta.textContent = completa ? 'Salir de pantalla completa' : 'Pantalla completa';
+        $botonCompleta.textContent = completa ? '✕ Salir de pantalla completa' : 'Pantalla completa';
+      });
+
+      document.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape' && $previsualizacion.classList.contains('completa')) {
+          $previsualizacion.classList.remove('completa');
+          $botonCompleta.textContent = 'Pantalla completa';
+        }
       });
 
       // --- Adjuntos --------------------------------------------------------------
