@@ -29,7 +29,7 @@ export const REMITENTES = {
     id: 'paola',
     nombre: 'Paola Vargas',
     cargo: 'Departamento comercial',
-    whatsapp: '311 253 3085',
+    whatsapp: '+57 311 253 3085',
     // A esta dirección llegan las respuestas del cliente, aunque el correo
     // salga técnicamente desde el dominio de la empresa (ver EMPRESA.correoVentas).
     correoDirecto: 'byslogisticsltda@hotmail.com',
@@ -257,7 +257,7 @@ export const PLANTILLAS = {
     campos: [
       campo(
         'mensaje',
-        'Escribe el correo completo — admite "- " para viñetas, **negrita**, *cursiva* y enlaces',
+        'Escribe el correo completo — admite "- " para viñetas, **negrita**, *cursiva*, enlaces sueltos (https://…) y enlaces con texto [así](https://…)',
         'textarea',
         true,
       ),
@@ -471,9 +471,26 @@ function bloqueHtml(bloque) {
   return `<p style="margin:0 0 16px;">${formatoLigero(bloque.replace(/\n/g, '<br>'))}</p>`;
 }
 
+/**
+ * Enlaces con etiqueta `[texto](https://…)` primero (se guardan aparte para
+ * que negrita/cursiva no les toquen los corchetes), y después enlaces sueltos
+ * — dejando afuera la puntuación final (".", ",", ")"...) para que un enlace
+ * al final de una frase no la incluya como parte de la URL.
+ */
 function formatoLigero(texto) {
-  return texto
+  const enlaces = [];
+  let resultado = texto.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, etiqueta, url) => {
+    enlaces.push(`<a href="${url}" style="color:#00518e;">${etiqueta}</a>`);
+    return ` ${enlaces.length - 1} `;
+  });
+
+  resultado = resultado
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#00518e;">$1</a>');
+    .replace(
+      /(https?:\/\/[^\s<]+?)([.,;:!?)\]]*)(?=[\s<]|$)/g,
+      (_, url, puntuacion) => `<a href="${url}" style="color:#00518e;">${url}</a>${puntuacion}`,
+    );
+
+  return resultado.replace(/ (\d+) /g, (_, indice) => enlaces[Number(indice)]);
 }
