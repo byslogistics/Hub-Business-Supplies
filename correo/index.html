@@ -22,6 +22,11 @@
 
         --fondo: var(--brand-50);
         --fondo-tarjeta: #fff;
+        /* A diferencia de --fondo-tarjeta (pensada para una tarjeta ENCIMA
+           del fondo, y por eso translúcida en modo oscuro), esta es sólida
+           siempre — la necesita la vista previa a pantalla completa, que
+           tiene que tapar del todo lo que hay detrás. */
+        --superficie: #ffffff;
         --texto: #181818;
         --texto-suave: #5b6875;
         --texto-tenue: #8a949f;
@@ -38,6 +43,7 @@
         :root {
           --fondo: #0a2a4d;
           --fondo-tarjeta: rgb(255 255 255 / 0.06);
+          --superficie: #0f2b4c;
           --texto: #f1f6fb;
           --texto-suave: #b3c8dd;
           --texto-tenue: #8ba3bc;
@@ -327,6 +333,10 @@
         box-shadow: var(--sombra-alta);
       }
 
+      /* Fondo SÓLIDO (--superficie, no --fondo-tarjeta) — esto es una
+         pantalla completa que tapa el formulario de atrás, no una tarjeta
+         encima de él. Con la translúcida de antes, en modo oscuro se veía el
+         título de la sección de atrás asomado detrás de "Vista previa". */
       .previsualizacion {
         display: none;
         position: fixed;
@@ -337,6 +347,7 @@
         border-radius: 0;
         padding: 1.25rem 1.5rem;
         box-shadow: none;
+        background: var(--superficie);
       }
 
       .previsualizacion.abierta {
@@ -346,20 +357,12 @@
       .previsualizacion-cabecera {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
         gap: 0.75rem;
-        margin-bottom: 1rem;
+        margin: 0 3.5rem 1rem 0;
       }
 
       .previsualizacion-cabecera h2 {
         margin: 0;
-      }
-
-      .controles-previa {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
       }
 
       .segmentado {
@@ -384,41 +387,58 @@
         color: #fff;
       }
 
+      /* Fijo en la esquina superior derecha de la pantalla, a propósito
+         separado del segmentado — es el botón para salir, tiene que ser
+         inconfundible y estar siempre en el mismo sitio. */
       .boton-cerrar-previa {
+        position: absolute;
+        top: 1.1rem;
+        right: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
         border: 1px solid var(--borde-fuerte);
         border-radius: 999px;
         background: var(--fondo-tarjeta);
-        color: var(--texto-suave);
-        padding: 0.35rem 0.75rem;
-        font-size: 0.75rem;
-        font-weight: 600;
+        color: var(--texto);
         cursor: pointer;
       }
 
       /* Fondo liso y neutro en vez de las rayas diagonales que había antes —
-         se veían más como un error de carga que como un diseño a propósito. */
+         se veían más como un error de carga que como un diseño a propósito.
+         Centrado con `margin: 0 auto` en vez de flex + justify-content, para
+         que si el correo no cupiera se pueda hacer scroll hasta el principio
+         de verdad — centrar con flex dejaba cortado el lado izquierdo sin
+         forma de llegar a él. */
       .lienzo-previa {
         flex: 1;
-        display: flex;
-        justify-content: center;
-        background: var(--fondo);
-        border-radius: 12px;
-        padding: 1rem;
         overflow: auto;
+        padding: 1rem;
       }
 
       .previsualizacion iframe {
+        display: block;
+        margin: 0 auto;
         width: 700px;
         max-width: 100%;
         height: calc(100vh - 9rem);
         border: 1px solid var(--borde);
         border-radius: 10px;
         background: #fff;
-        transition: width 0.2s ease;
+        transition: width 0.2s ease, height 0.2s ease;
       }
 
+      /* Modo celular: además de encogerse, se ve como un teléfono de
+         verdad — marco oscuro y esquinas redondeadas, no sólo un iframe
+         angosto suelto en medio de la pantalla. */
       .previsualizacion[data-ancho='celular'] iframe {
-        width: 390px;
+        width: 375px;
+        height: min(calc(100vh - 9rem), 780px);
+        border: 10px solid #1b1e24;
+        border-radius: 36px;
+        box-shadow: 0 16px 36px rgb(0 0 0 / 0.35);
       }
     </style>
   </head>
@@ -542,14 +562,16 @@
       </button>
 
       <div class="panel previsualizacion" id="previsualizacion" data-ancho="escritorio">
+        <button type="button" class="boton-cerrar-previa" id="boton-cerrar-previa" aria-label="Cerrar vista previa">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+          </svg>
+        </button>
         <div class="previsualizacion-cabecera">
           <h2>Vista previa</h2>
-          <div class="controles-previa">
-            <div class="segmentado" role="group" aria-label="Ancho de la vista previa">
-              <button type="button" id="ancho-escritorio" class="activo">Escritorio</button>
-              <button type="button" id="ancho-celular">Celular</button>
-            </div>
-            <button type="button" class="boton-cerrar-previa" id="boton-cerrar-previa">✕ Cerrar</button>
+          <div class="segmentado" role="group" aria-label="Ancho de la vista previa">
+            <button type="button" id="ancho-escritorio" class="activo">Escritorio</button>
+            <button type="button" id="ancho-celular">Celular</button>
           </div>
         </div>
         <div class="lienzo-previa">

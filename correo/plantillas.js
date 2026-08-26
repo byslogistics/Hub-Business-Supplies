@@ -357,7 +357,7 @@ function envoltura(contenidoHtml, remitente, plantilla, ctas) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.fondo};padding:36px 12px;">
       <tr>
         <td align="center">
-          <table role="presentation" width="${ANCHO_CORREO}" cellpadding="0" cellspacing="0" style="width:${ANCHO_CORREO}px;max-width:100%;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(0,32,58,0.06),0 12px 28px -12px rgba(0,32,58,0.18);">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:${ANCHO_CORREO}px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(0,32,58,0.06),0 12px 28px -12px rgba(0,32,58,0.18);">
             <tr>
               <td style="height:6px;line-height:6px;font-size:0;background:${plantilla.colorEtiqueta};">&nbsp;</td>
             </tr>
@@ -394,7 +394,7 @@ function envoltura(contenidoHtml, remitente, plantilla, ctas) {
               </td>
             </tr>
           </table>
-          <table role="presentation" width="${ANCHO_CORREO}" cellpadding="0" cellspacing="0" style="width:${ANCHO_CORREO}px;max-width:100%;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:${ANCHO_CORREO}px;">
             <tr>
               <td style="padding:18px 12px 0;text-align:center;font-size:11px;color:#9aa7b4;">
                 Business &amp; Supplies Logistics S.A.S. · Bogotá, Colombia
