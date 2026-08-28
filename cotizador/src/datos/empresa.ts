@@ -36,19 +36,12 @@ export const EMPRESA = {
  * Asesores que firman cotizaciones. El primero es el que se propone por
  * defecto en una cotización nueva.
  *
- * Son los mismos nombres que pueden firmar un correo comercial (`REMITENTES`
- * en `correo/plantillas.js`); están escritos dos veces porque el correo y el
- * cotizador se despliegan por separado y ninguno depende del otro. Al añadir
- * a alguien conviene mirar los dos sitios.
+ * Salen de `compartido/equipo.js`, que es el mismo sitio del que salen los
+ * remitentes del correo. Estaban escritos dos veces y ya se habían
+ * desincronizado: el correo se quedó con dos personas cuando aquí ya había
+ * tres. Para añadir a alguien se edita aquel archivo y nada más.
  */
-export const ASESORES: readonly string[] = [
-  'Yeimy Mahecha',
-  'Paola Vargas',
-  // Atiende Panamá. Su teléfono es el que ya estaba aquí arriba como
-  // `EMPRESA.panama`: no es un dato nuevo, es el mismo con nombre.
-  'Neyla Mahecha',
-  'Equipo comercial B&S Logistics',
-];
+export { NOMBRES_EQUIPO as ASESORES } from '../../../compartido/equipo.js';
 
 /**
  * Tasa que se propone al pasar una cotización a dólares.

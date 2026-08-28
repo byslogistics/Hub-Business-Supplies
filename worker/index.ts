@@ -39,21 +39,9 @@ import type { Cotizacion } from '../cotizador/src/dominio/tipos';
 import * as clientes from './clientes';
 import * as importacion from './importacion';
 import { cuerpoJson, ErrorPeticion, fallo, json } from './http';
+import type { Env } from './entorno';
+import * as envios from './envios';
 import { identificar, SinAcceso } from './acceso';
-import { EMPRESA, MAXIMO_ADJUNTOS_BYTES, PLANTILLAS, REMITENTES, renderCorreo } from '../correo/plantillas.js';
-
-interface Env {
-  BASE: D1Database;
-  ASSETS: Fetcher;
-  ACCESO_DOMINIO: string;
-  ACCESO_AUD: string;
-  /** La llave de la cuenta de Resend de la empresa. Se pone con
-   *  `wrangler secret put RESEND_API_KEY` — nunca en `wrangler.jsonc`. */
-  RESEND_API_KEY: string;
-  /** `desarrollo` salta la comprobación de Access. Nunca en producción. */
-  MODO?: string;
-  CORREO_DESARROLLO?: string;
-}
 
 /** Un documento más grande que esto no es una cotización, es un error. */
 const MAXIMO_DOCUMENTO = 512 * 1024;
@@ -106,7 +94,7 @@ async function enrutar(
   }
 
   if (ruta === 'correo/enviar' && metodo === 'POST') {
-    return json(await enviarCorreo(peticion, env, correo));
+    return json(await envios.enviarCorreo(env.BASE, peticion, env, correo));
   }
 
   if (ruta === 'cotizaciones') {
@@ -132,6 +120,15 @@ async function enrutar(
     const numero = decodeURIComponent(detalle[1]!);
     if (metodo === 'GET') return json(await abrir(env.BASE, numero));
     if (metodo === 'PUT') return json(await registrar(env.BASE, peticion, correo, numero));
+  }
+
+  // El envío va antes que la ruta de estado por costumbre del archivo: las
+  // rutas con sufijo, agrupadas y antes del detalle.
+  const enviar = /^cotizaciones\/([^/]+)\/enviar$/.exec(ruta);
+  if (enviar && metodo === 'POST') {
+    return json(
+      await envios.enviarCotizacion(env.BASE, env, decodeURIComponent(enviar[1]!), peticion, correo),
+    );
   }
 
   const estado = /^cotizaciones\/([^/]+)\/estado$/.exec(ruta);
@@ -208,204 +205,6 @@ async function enrutarClientes(
   }
 
   return null;
-}
-
-// --- Correo comercial -------------------------------------------------------
-
-const RESEND_ENDPOINT = 'https://api.resend.com/emails';
-
-/** Ningún correo necesita más de esto para venderle a un cliente. */
-const MAXIMO_ADJUNTOS = 5;
-
-interface AdjuntoRecibido {
-  nombre?: string;
-  tipo?: string;
-  contenidoBase64?: string;
-}
-
-interface PeticionCorreo {
-  remitenteId?: string;
-  plantillaId?: string;
-  destinatario?: string;
-  asunto?: string;
-  datos?: Record<string, string>;
-  adjuntos?: AdjuntoRecibido[];
-  /** Si la vendedora marcó "Enviarme una copia". La dirección de esa copia
-   *  nunca sale de aquí — sale de `correo`, la identidad ya comprobada por
-   *  Access, para que nadie pueda pedir copia a una dirección ajena. */
-  copiaAlRemitente?: boolean;
-  /** Qué botones (CTA) incluir: 'sitio', 'whatsapp', 'facebook', 'instagram'.
-   *  Si no viene, `renderCorreo` usa los que la plantilla trae sugeridos. */
-  ctas?: string[];
-}
-
-/** Las únicas claves de CTA que existen — cualquier otra cosa que llegue en
- *  `ctas` se descarta en silencio, igual que hace `ctasDe` en plantillas.js. */
-const CLAVES_CTA_VALIDAS = new Set(['sitio', 'whatsapp', 'facebook', 'instagram']);
-
-/** Ningún correo comercial necesita más destinatarios que esto de una vez. */
-const MAXIMO_DESTINATARIOS = 5;
-
-/**
- * El campo del formulario admite varias direcciones separadas por coma. Cada
- * una se valida por separado, y una sola inválida rechaza todo el envío —
- * mejor que la vendedora corrija el correo mal escrito a que uno de cinco
- * clientes se quede sin recibirlo en silencio.
- */
-function parsearDestinatarios(destinatario: string | undefined): string[] {
-  const direcciones = (destinatario ?? '')
-    .split(',')
-    .map((d) => d.trim())
-    .filter(Boolean);
-
-  if (direcciones.length === 0) {
-    throw new ErrorPeticion(400, 'invalida', 'Falta el correo del destinatario.');
-  }
-  if (direcciones.length > MAXIMO_DESTINATARIOS) {
-    throw new ErrorPeticion(400, 'invalida', `No se pueden mandar más de ${MAXIMO_DESTINATARIOS} destinatarios a la vez.`);
-  }
-  for (const direccion of direcciones) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(direccion)) {
-      throw new ErrorPeticion(400, 'invalida', `«${direccion}» no es un correo válido.`);
-    }
-  }
-
-  return direcciones;
-}
-
-/**
- * Manda un correo comercial por Resend.
- *
- * El HTML nunca viene del navegador: se vuelve a generar aquí con
- * `renderCorreo`, a partir sólo de los valores sueltos de los campos. Así una
- * petición manipulada no puede meter en el correo de la empresa nada distinto
- * a lo que las plantillas permiten.
- *
- * Quién lo envía —para dejar rastro en los registros de Resend— sale de
- * `correo`, el mismo dato que ya comprobó `quienEs` con el token de Access;
- * no se le pregunta a quien llama.
- */
-async function enviarCorreo(
-  peticion: Request,
-  env: Env,
-  correo: string,
-): Promise<{ enviado: true; id: string }> {
-  const cuerpo = await cuerpoJson<PeticionCorreo>(peticion);
-
-  const { remitenteId, plantillaId, destinatario, asunto, datos, adjuntos, copiaAlRemitente, ctas } = cuerpo;
-
-  if (!remitenteId || !(remitenteId in REMITENTES)) {
-    throw new ErrorPeticion(400, 'invalida', 'Ese remitente no existe.');
-  }
-  if (!plantillaId || !(plantillaId in PLANTILLAS)) {
-    throw new ErrorPeticion(400, 'invalida', 'Esa plantilla no existe.');
-  }
-  const destinatarios = parsearDestinatarios(destinatario);
-  const ctasActivos = Array.isArray(ctas) ? ctas.filter((c) => CLAVES_CTA_VALIDAS.has(c)) : undefined;
-
-  let generado: ReturnType<typeof renderCorreo>;
-  try {
-    generado = renderCorreo(remitenteId, plantillaId, datos ?? {}, ctasActivos);
-  } catch (error) {
-    throw new ErrorPeticion(400, 'invalida', error instanceof Error ? error.message : 'Datos inválidos.');
-  }
-
-  // El tamaño ya se comprobó en el navegador, pero eso es sólo para que la
-  // vendedora no espere el envío para enterarse — la comprobación que cuenta
-  // es esta, del lado del servidor.
-  const adjuntosValidados = validarAdjuntos(adjuntos);
-
-  const asuntoFinal = (asunto ?? '').trim() || generado.asunto;
-
-  const respuesta = await fetch(RESEND_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: `${generado.remitente.nombre} - B&S Logistics <${EMPRESA.correoVentas}>`,
-      reply_to: generado.remitente.correoDirecto,
-      to: destinatarios,
-      subject: asuntoFinal,
-      html: generado.html,
-      // La copia va a `correo` —la identidad ya comprobada por Access— y
-      // nunca a una dirección que venga del cuerpo de la petición.
-      ...(copiaAlRemitente ? { cc: [correo] } : {}),
-      ...(adjuntosValidados.length > 0
-        ? { attachments: adjuntosValidados.map((a) => ({ filename: a.nombre, content: a.contenidoBase64 })) }
-        : {}),
-    }),
-  });
-
-  if (!respuesta.ok) {
-    const detalle = await respuesta.text().catch(() => '');
-    console.error(`Resend respondió ${respuesta.status} al correo de ${correo}:`, detalle);
-    throw new ErrorPeticion(502, 'fallo', 'Resend no pudo enviar el correo. Vuelva a intentarlo.');
-  }
-
-  const { id } = (await respuesta.json()) as { id: string };
-  return { enviado: true, id };
-}
-
-/** Los mismos tipos que deja elegir `correo/index.html` en el `accept` del
- *  input — se repite aquí porque el navegador es sólo la primera línea de
- *  defensa, nunca la que cuenta. */
-const EXTENSIONES_ADJUNTOS_PERMITIDAS = new Set([
-  'pdf', 'jpg', 'jpeg', 'png', 'webp', 'xlsx', 'xls', 'docx', 'doc',
-]);
-
-function extensionDe(nombre: string): string {
-  return nombre.split('.').pop()?.toLowerCase() ?? '';
-}
-
-/**
- * Revisa el tipo, la cantidad y el peso de los adjuntos antes de mandarlos.
- *
- * `contenidoBase64` no se decodifica entero para pesarlo — de un texto en
- * base64 el tamaño real se calcula con su longitud, sin necesidad de volverlo
- * bytes primero.
- */
-function validarAdjuntos(adjuntos: AdjuntoRecibido[] | undefined): { nombre: string; contenidoBase64: string }[] {
-  if (!adjuntos || adjuntos.length === 0) return [];
-
-  if (adjuntos.length > MAXIMO_ADJUNTOS) {
-    throw new ErrorPeticion(400, 'invalida', `No se pueden adjuntar más de ${MAXIMO_ADJUNTOS} archivos.`);
-  }
-
-  let pesoTotal = 0;
-  const validados: { nombre: string; contenidoBase64: string }[] = [];
-
-  for (const adjunto of adjuntos) {
-    const nombre = (adjunto?.nombre ?? '').trim();
-    const contenidoBase64 = (adjunto?.contenidoBase64 ?? '').trim();
-    if (!nombre || !contenidoBase64) {
-      throw new ErrorPeticion(400, 'invalida', 'Uno de los adjuntos llegó incompleto.');
-    }
-    if (!EXTENSIONES_ADJUNTOS_PERMITIDAS.has(extensionDe(nombre))) {
-      throw new ErrorPeticion(400, 'invalida', `«${nombre}» no es un tipo de archivo permitido.`);
-    }
-
-    pesoTotal += tamanoDeBase64(contenidoBase64);
-    if (pesoTotal > MAXIMO_ADJUNTOS_BYTES) {
-      throw new ErrorPeticion(
-        400,
-        'invalida',
-        `Los adjuntos pesan más de lo permitido (máximo ${Math.round(MAXIMO_ADJUNTOS_BYTES / (1024 * 1024))} MB en total).`,
-      );
-    }
-
-    validados.push({ nombre, contenidoBase64 });
-  }
-
-  return validados;
-}
-
-/** Bytes reales que representa un texto en base64, sin decodificarlo entero. */
-function tamanoDeBase64(base64: string): number {
-  const limpio = base64.replace(/[^A-Za-z0-9+/=]/g, '');
-  const relleno = limpio.endsWith('==') ? 2 : limpio.endsWith('=') ? 1 : 0;
-  return Math.floor((limpio.length * 3) / 4) - relleno;
 }
 
 // --- Registrar ------------------------------------------------------------

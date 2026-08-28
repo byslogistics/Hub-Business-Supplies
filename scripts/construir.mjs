@@ -37,4 +37,13 @@ for (const archivo of ['index.html', 'assets', 'correo']) {
   await cp(join(raiz, archivo), join(destino, archivo), { recursive: true });
 }
 
+// `correo/plantillas.js` importa el equipo desde `../compartido/equipo.js`, y
+// el navegador lo pide tal cual: sin compilar y sin empaquetar. Si no viaja, la
+// pantalla de correo se queda en blanco con un 404 en la consola.
+//
+// Se copia ese archivo y no la carpeta entera a propósito: el resto de
+// `compartido/` es TypeScript que no se sirve a nadie.
+await mkdir(join(destino, 'compartido'), { recursive: true });
+await cp(join(raiz, 'compartido', 'equipo.js'), join(destino, 'compartido', 'equipo.js'));
+
 console.log(`Listo. \`publico/\` preparado para \`wrangler deploy\`.`);

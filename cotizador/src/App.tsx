@@ -27,7 +27,9 @@ import { aplicar, compararCon, hayQuePreguntar, planDe, type Plan, type Resoluci
 import { PanelConciliacion, type Respuesta } from './clientes/PanelConciliacion';
 import { PantallaClientes } from './clientes/PantallaClientes';
 import { PantallaHistorial } from './historial/PantallaHistorial';
-import { abrirWhatsapp, copiarMensaje, descargarPdf, verPdf } from './ui/acciones';
+import { enviarCotizacion } from './envios/almacen';
+import { VentanaEnvio, type DatosEnvio } from './envios/VentanaEnvio';
+import { abrirWhatsapp, copiarMensaje, descargarPdf, pdfEnBase64, verPdf } from './ui/acciones';
 import { PanelCatalogo } from './ui/PanelCatalogo';
 import {
   DatosCliente,
@@ -124,6 +126,9 @@ function Cotizador({
     plan: Plan;
     resolver: (respuesta: Respuesta) => void;
   } | null>(null);
+  const [ventanaEnvio, setVentanaEnvio] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [falloEnvio, setFalloEnvio] = useState('');
 
   const vacia = cotizacion.lineas.length === 0;
 
@@ -258,6 +263,69 @@ function Cotizador({
     }
   };
 
+  /**
+   * Emite la cotización y la manda por correo, en ese orden.
+   *
+   * Son dos cosas y pueden fallar por separado, así que el mensaje de error
+   * distingue: si el guardado ya pasó, la cotización **existe** y tiene número
+   * aunque el correo no haya salido. Decir sólo «falló» haría que alguien la
+   * emitiera otra vez y gastara un número por nada.
+   */
+  const enviar = async (datos: DatosEnvio) => {
+    if (enviando) return;
+    setEnviando(true);
+    setFalloEnvio('');
+
+    let numeroEmitido = '';
+
+    try {
+      // Si la ficha no tenía correo, el que se escriba aquí entra por el camino
+      // de siempre: la conciliación lo ve como un campo vacío y lo llena sola.
+      const primero = datos.destinatario.split(',')[0]?.trim() ?? '';
+      const conCorreo =
+        cotizacion.cliente.email.trim() || !primero
+          ? cotizacion
+          : { ...cotizacion, cliente: { ...cotizacion.cliente, email: primero } };
+      if (conCorreo !== cotizacion) despachar({ tipo: 'editarCliente', cambios: { email: primero } });
+
+      const ficha = await sincronizarCliente(conCorreo);
+      if (ficha.cancelado) return;
+
+      const conCliente = ficha.codigo ? { ...conCorreo, clienteCodigo: ficha.codigo } : conCorreo;
+      if (ficha.codigo && ficha.codigo !== conCorreo.clienteCodigo) {
+        despachar({ tipo: 'editarCabecera', cambios: { clienteCodigo: ficha.codigo } });
+      }
+
+      const { numero } = await almacen.registrar(conCliente);
+      numeroEmitido = numero;
+      if (numero !== conCliente.numero) despachar({ tipo: 'numeroAsignado', numero });
+
+      const definitiva = { ...conCliente, numero };
+      const { base64, nombre } = await pdfEnBase64(definitiva);
+
+      await enviarCotizacion(numero, {
+        ...datos,
+        pdfBase64: base64,
+        nombrePdf: nombre,
+      });
+
+      setVentanaEnvio(false);
+      anunciar(`Cotización ${numero} enviada.`, 5000);
+    } catch (error) {
+      console.error(error);
+      const razon =
+        error instanceof FalloApi ? error.mensaje : 'No se pudo enviar. Vuelva a intentarlo.';
+      setFalloEnvio(
+        numeroEmitido
+          ? `La cotización quedó guardada como ${numeroEmitido}, pero el correo no salió: ${razon} ` +
+              'Puede reintentar aquí mismo sin gastar otro número.'
+          : razon,
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   const acciones = {
     descargar: () => emitir((c) => descargarPdf(c)),
     ver: () => soloVer((c) => verPdf(c, true)),
@@ -270,6 +338,10 @@ function Cotizador({
             : 'No se pudo copiar; seleccione el texto a mano.',
         ),
       ),
+    enviar: () => {
+      setFalloEnvio('');
+      setVentanaEnvio(true);
+    },
     reiniciar: () => {
       if (vacia || confirm('¿Descartar la cotización actual y empezar una nueva?')) {
         despachar({ tipo: 'reiniciar' });
@@ -356,11 +428,21 @@ function Cotizador({
             </button>
             <button
               type="button"
-              className="boton-primario"
+              className="boton-secundario"
               onClick={acciones.descargar}
               disabled={vacia || emitiendo}
             >
               {emitiendo ? 'Emitiendo…' : 'Descargar PDF'}
+            </button>
+            {/* El botón que faltaba: hasta ahora la cotización salía por
+                WhatsApp o como PDF adjunto a mano desde otra pantalla. */}
+            <button
+              type="button"
+              className="boton-primario"
+              onClick={acciones.enviar}
+              disabled={vacia || emitiendo}
+            >
+              Enviar cotización
             </button>
           </div>
         </div>
@@ -449,6 +531,14 @@ function Cotizador({
             >
               Vista previa
             </button>
+            <button
+              type="button"
+              className="boton-secundario"
+              onClick={acciones.descargar}
+              disabled={vacia || emitiendo}
+            >
+              Descargar PDF
+            </button>
           </div>
 
           <PieCatalogo />
@@ -460,8 +550,19 @@ function Cotizador({
         moneda={cambio.moneda}
         vacia={vacia || emitiendo}
         alWhatsapp={acciones.whatsapp}
-        alDescargar={acciones.descargar}
+        alEnviar={acciones.enviar}
       />
+
+      {ventanaEnvio ? (
+        <VentanaEnvio
+          cotizacion={cotizacion}
+          sinNumero={!cotizacion.numero}
+          enviando={enviando}
+          fallo={falloEnvio}
+          alEnviar={(datos) => void enviar(datos)}
+          alCerrar={() => setVentanaEnvio(false)}
+        />
+      ) : null}
 
       {conciliacion ? (
         <PanelConciliacion
@@ -539,19 +640,26 @@ function Conmutador({
   );
 }
 
-/** Total siempre a la vista y las dos acciones de envío, sólo en móvil. */
+/**
+ * Total siempre a la vista y las dos formas de mandar la oferta, sólo en móvil.
+ *
+ * WhatsApp se queda —es por donde se cierra media venta en Colombia— y el
+ * segundo sitio pasa a ser el correo. El PDF baja a las acciones secundarias:
+ * descargar un archivo en el celular para adjuntarlo a mano es justo lo que
+ * este botón viene a hacer innecesario.
+ */
 function BarraMovil({
   total,
   moneda,
   vacia,
   alWhatsapp,
-  alDescargar,
+  alEnviar,
 }: {
   total: number;
   moneda: Moneda;
   vacia: boolean;
   alWhatsapp: () => void;
-  alDescargar: () => void;
+  alEnviar: () => void;
 }) {
   return (
     // Es una `section` con nombre —y no un `div`— para que sea un landmark:
@@ -569,8 +677,8 @@ function BarraMovil({
         <button type="button" className="boton-whatsapp" onClick={alWhatsapp} disabled={vacia}>
           WhatsApp
         </button>
-        <button type="button" className="boton-primario" onClick={alDescargar} disabled={vacia}>
-          PDF
+        <button type="button" className="boton-primario" onClick={alEnviar} disabled={vacia}>
+          Enviar
         </button>
       </div>
     </section>

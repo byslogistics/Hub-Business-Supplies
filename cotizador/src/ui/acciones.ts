@@ -36,6 +36,39 @@ export async function verPdf(cotizacion: Cotizacion, borrador = false): Promise<
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/**
+ * El mismo PDF que se descarga, pero en base64 para mandarlo por correo.
+ *
+ * Se genera aquí y no en el servidor porque jsPDF vive en el navegador, y
+ * porque así el archivo que recibe el cliente por correo es **byte por byte**
+ * el mismo que sale del botón de descargar. Regenerarlo en el servidor con otra
+ * librería sería tener dos PDF distintos con el mismo número.
+ */
+export async function pdfEnBase64(
+  cotizacion: Cotizacion,
+): Promise<{ base64: string; nombre: string }> {
+  const { doc, nombre } = await generar(cotizacion, false);
+  return { base64: aBase64(new Uint8Array(doc.output('arraybuffer'))), nombre };
+}
+
+/**
+ * Bytes a base64, por trozos.
+ *
+ * `String.fromCharCode(...bytes)` con un PDF entero revienta la pila de
+ * argumentos: son cientos de miles de números en una sola llamada. De ocho mil
+ * en ocho mil no.
+ */
+function aBase64(bytes: Uint8Array): string {
+  const TROZO = 8192;
+  let binario = '';
+
+  for (let i = 0; i < bytes.length; i += TROZO) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + TROZO));
+  }
+
+  return btoa(binario);
+}
+
 export function abrirWhatsapp(cotizacion: Cotizacion): void {
   window.open(enlaceWhatsapp(cotizacion, cotizacion.iva), '_blank', 'noopener');
 }

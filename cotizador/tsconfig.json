@@ -11,6 +11,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
+    // Para `compartido/equipo.js`, que es JavaScript llano porque también lo
+    // carga el navegador sin compilar desde `correo/index.html`.
+    "allowJs": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,

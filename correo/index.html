@@ -547,6 +547,16 @@
               Si necesitas mandarlo a varias personas a la vez, sepáralas con comas (máximo 5).
             </p>
           </div>
+          <!-- La copia al archivo va antes que la personal: es la que hace que
+               las respuestas de los clientes no se pierdan, y la que conviene
+               que se marque. -->
+          <div class="campo campo-casilla">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-weight:500;">
+              <input type="checkbox" id="copia-archivo" style="width:auto;" />
+              Guardar copia en el archivo de la empresa
+            </label>
+          </div>
+
           <div class="campo campo-casilla" style="display:none;" id="campo-copia">
             <label style="display:flex;align-items:center;gap:0.5rem;font-weight:500;">
               <input type="checkbox" id="copia" style="width:auto;" />
@@ -630,7 +640,7 @@
       </div>
 
     <script type="module">
-      import { REMITENTES, PLANTILLAS, previsualizarCorreo, MAXIMO_ADJUNTOS_BYTES } from './plantillas.js';
+      import { REMITENTES, ORDEN_EQUIPO, PLANTILLAS, previsualizarCorreo, MAXIMO_ADJUNTOS_BYTES } from './plantillas.js';
 
       const $remitente = document.getElementById('remitente');
       const $plantilla = document.getElementById('plantilla');
@@ -673,14 +683,17 @@
         })
         .catch(() => {});
 
-      for (const r of Object.values(REMITENTES)) {
+      // En el orden del equipo, no en el que salgan las claves del objeto.
+      for (const r of ORDEN_EQUIPO.map((id) => REMITENTES[id])) {
         const opt = document.createElement('option');
         opt.value = r.id;
         opt.textContent = r.nombre;
         $remitente.appendChild(opt);
       }
 
-      for (const p of Object.values(PLANTILLAS)) {
+      // Se saltan las que no se arman desde aquí: la de cotización sale del
+      // cotizador, que es quien sabe de qué cotización se trata.
+      for (const p of Object.values(PLANTILLAS).filter((p) => !p.soloCotizador)) {
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = p.nombre;
@@ -928,6 +941,7 @@
               asunto: $asunto.value.trim(),
               datos: datosFormulario(),
               copiaAlRemitente: $copia.checked,
+              copiaArchivo: document.getElementById('copia-archivo').checked,
               ctas: ctasActivas(),
               adjuntos: adjuntos.map((a) => ({
                 nombre: a.nombre,

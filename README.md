@@ -430,10 +430,82 @@ técnica, la cotización sale igual y se avisa: el cliente está esperando su
 oferta, y una ficha sin actualizar se arregla después desde el panel; una
 cotización que no salió, no.
 
+### Enviar la cotización
+
+Junto a «Descargar PDF» hay ahora un tercer botón: **Enviar cotización**. Abre
+una ventana con el correo ya armado —asunto, cuerpo, el correo del cliente, el
+PDF adjunto— que se puede corregir entero antes de que salga, y con una vista
+previa que enseña **exactamente** cómo va a llegar. El mismo botón está en cada
+fila del historial, para reenviar una cotización vieja sin volver a armarla.
+
+Lo que la ventana **no** deja tocar son las cifras. El número, la fecha, el
+total y las condiciones los pone el servidor leyendo la cotización guardada, con
+las mismas funciones que usa la pantalla. Es la regla del historial —el
+documento manda— aplicada al correo: si el total pudiera llegar ya escrito desde
+el navegador, se podría mandar un correo con el membrete de la empresa diciendo
+una cifra que no es la de ninguna cotización. Por eso mismo la plantilla de
+cotización no aparece en el desplegable de `/correo/` y el servidor la rechaza
+por esa puerta.
+
+El PDF sí lo genera el navegador, y a propósito: es **byte por byte** el mismo
+archivo que sale del botón de descargar. Regenerarlo en el servidor con otra
+librería sería tener dos PDF distintos con el mismo número.
+
+Enviar son dos cosas que pueden fallar por separado —guardar la cotización y
+mandar el correo— y el mensaje de error lo distingue. Si el guardado ya pasó, la
+cotización **existe y tiene número** aunque el correo no haya salido, y se puede
+reintentar sin gastar otro. Decir sólo «falló» haría que alguien la emitiera de
+nuevo por nada.
+
+### El equipo, en un solo archivo
+
+Quién puede firmar estaba escrito dos veces —tres asesores en el cotizador, dos
+remitentes en el correo— y ya se habían desincronizado. Ahora vive en
+`compartido/equipo.js`, del que beben las tres pantallas: **Yeimy Mahecha**,
+**Paola Vargas**, **Neyla Mahecha** (Panamá) y el **Equipo comercial**. Para
+añadir a alguien, ese archivo y nada más.
+
+Está en JavaScript llano y no en TypeScript porque uno de los tres sitios que lo
+carga no compila nada: `correo/index.html` lo pide tal cual desde el navegador.
+Por eso `npm run build` lo copia a `publico/compartido/`.
+
+### Las respuestas ya no se pierden
+
+Hasta agosto de 2026, la respuesta de un cliente a un correo del hub no llegaba
+a ninguna parte. Eran dos agujeros distintos:
+
+1. **El código mandaba las respuestas a un buzón que nadie miraba.** Ahora cada
+   correo lleva **dos** direcciones de respuesta, con el buzón de la empresa
+   —`byslogisticssas@gmail.com`— **de primera**: algunos programas de correo se
+   quedan sólo con la primera al responder, así que el orden decide qué buzón no
+   puede quedarse sin la respuesta.
+2. **El dominio no sabía recibir.** No había ningún registro `MX` en
+   `byslogistics.com.co`, así que un correo dirigido a `ventas@` rebotaba días
+   después contra el servidor del cliente. Se resolvió fuera del código, con un
+   reenvío de todo el dominio hacia el buzón de la empresa. Verificar el dominio
+   en Resend habilita *enviar*; recibir es otra configuración.
+
+Además, las dos casillas de copia —al archivo de la empresa y a quien envía— van
+como copia **oculta**: el cliente no tiene por qué ver los buzones internos.
+
+### Lo que queda registrado
+
+Todo correo que sale del hub —una cotización o un correo suelto— deja una fila
+en la tabla `envios`: cuándo, a quién, quién lo firmó, de qué cotización era y a
+qué ficha de cliente pertenece. Un correo suelto se enlaza solo con su ficha si
+la dirección coincide con la de alguna.
+
+**No se guarda el texto.** Ni el cuerpo ni los adjuntos: guardar el contenido
+convertiría esa tabla en un buzón —tamaño, datos personales, copias de PDF que
+ya están en el documento de la cotización— para responder una pregunta que nadie
+hace. Y si el registro falla, **el envío no se cae**: el correo ya está en manos
+del cliente, y decir que falló haría que alguien lo mandara dos veces.
+
 ### Lo que todavía no hace
 
-Falta —y llega en las siguientes entregas— el botón de **enviar cotización** por
-correo, y que la ficha del cliente enseñe sus cotizaciones y sus correos.
+Falta la última entrega: que la ficha del cliente enseñe sus cotizaciones, sus
+correos y sus totales, y que el centro de correos permita elegir al destinatario
+de la base en vez de escribirlo.
 
 ---
 
@@ -549,13 +621,23 @@ resto de lo que pide la sección *Publicar* de abajo.
    RESEND_API_KEY=re_xxxxxxxxxxxxxxxx
    ```
 
+   Y para recorrer el camino entero del envío **sin mandarle un correo a nadie**
+   —las dos direcciones de respuesta, las copias ocultas, el registro— se puede
+   apuntar a otro sitio:
+
+   ```
+   RESEND_ENDPOINT=http://127.0.0.1:8788/emails
+   ```
+
+   Vacío en producción, que es lo que corresponde: ahí siempre va a Resend.
+
 ---
 
 ## Puesta en marcha
 
 ```bash
 npm run instalar     # dependencias del hub y del cotizador
-npm test             # 184 pruebas del cotizador
+npm test             # 192 pruebas del cotizador
 npm run build        # deja el sitio entero en publico/
 ```
 
@@ -607,8 +689,9 @@ Los dos comandos se vuelven a correr cada vez que aparece un archivo nuevo en
 `migraciones/`: aplican sólo lo que falte y no repiten lo ya aplicado. La
 `0002_papelera.sql` —las dos columnas de la papelera—, la `0003_moneda.sql`
 —la moneda, la tasa y el total en divisa—, la `0004_clientes.sql` —la libreta de
-clientes y su contador de códigos— y la `0005_cotizacion_cliente.sql` —el enlace
-entre una cotización y su ficha— son cuatro de ésas.
+clientes y su contador de códigos—, la `0005_cotizacion_cliente.sql` —el enlace
+entre una cotización y su ficha— y la `0006_envios.sql` —el registro de lo que
+se manda— son cuatro de ésas.
 
 **El despliegue no lo hace.** Cada empuje a `main` publica el código solo
 —Cloudflare Workers Builds—, pero la base no se toca: Cloudflare no sabe qué

@@ -33,7 +33,9 @@ import { dinero, fechaCorta, pesos, unidades as formatoUnidades } from '../domin
 import type { Cotizacion } from '../dominio/tipos';
 import { almacen, FalloApi } from './almacen';
 import { CampoSelect, CampoTexto } from '../ui/componentes';
-import { descargarPdf } from '../ui/acciones';
+import { enviarCotizacion } from '../envios/almacen';
+import { VentanaEnvio, type DatosEnvio } from '../envios/VentanaEnvio';
+import { descargarPdf, pdfEnBase64 } from '../ui/acciones';
 
 interface Props {
   /** Lleva una cotización guardada a la pantalla del cotizador. */
@@ -61,6 +63,17 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
    * resuelve el servidor y que puede alcanzar cotizaciones que esta pantalla
    * ni siquiera ha cargado.
    */
+  /**
+   * La cotización que se está reenviando por correo.
+   *
+   * Se guarda el documento entero y no sólo el número porque la ventana enseña
+   * sus cifras: es la misma cotización que recibió el cliente, regenerada del
+   * documento guardado, no una reconstrucción.
+   */
+  const [reenviando, setReenviando] = useState<Cotizacion | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [falloEnvio, setFalloEnvio] = useState('');
+
   const [marcadas, setMarcadas] = useState<ReadonlySet<string>>(new Set());
   const [todasFiltradas, setTodasFiltradas] = useState(false);
 
@@ -93,6 +106,33 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
     const espera = setTimeout(() => void cargar(filtro), filtro.texto ? 300 : 0);
     return () => clearTimeout(espera);
   }, [filtro, cargar]);
+
+  /**
+   * Vuelve a mandar una cotización ya emitida.
+   *
+   * No pasa por el registro ni por la conciliación de la ficha: la cotización
+   * ya existe, ya tiene número y ya está enlazada. Reenviar es sólo generar su
+   * PDF —el mismo, del mismo documento— y mandarlo.
+   */
+  const reenviar = async (documento: Cotizacion, datos: DatosEnvio) => {
+    if (enviando) return;
+    setEnviando(true);
+    setFalloEnvio('');
+
+    try {
+      const { base64, nombre } = await pdfEnBase64(documento);
+      await enviarCotizacion(documento.numero, { ...datos, pdfBase64: base64, nombrePdf: nombre });
+      setReenviando(null);
+      setAviso(`Cotización ${documento.numero} enviada.`);
+    } catch (error) {
+      console.error(error);
+      setFalloEnvio(
+        error instanceof FalloApi ? error.mensaje : 'No se pudo enviar. Vuelva a intentarlo.',
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const cambiar = (cambios: Partial<FiltroHistorial>) => {
     // La selección no sobrevive a un cambio de filtro. Si sobreviviera,
@@ -361,6 +401,12 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
                 });
               }}
               alPdf={(r) => void conPdf(r, (c) => descargarPdf(c))}
+              alEnviar={(r) =>
+                void conPdf(r, async (c) => {
+                  setFalloEnvio('');
+                  setReenviando(c);
+                })
+              }
               alReabrir={(r) => void conPdf(r, async (c) => alReabrir(c))}
               alMarcarEstado={(r, estado) => void marcarEstado(r, estado)}
             />
@@ -370,6 +416,17 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
 
       {pagina && pagina.cuantas > pagina.porPagina ? (
         <Paginacion pagina={pagina} alIr={irAPagina} />
+      ) : null}
+
+      {reenviando ? (
+        <VentanaEnvio
+          cotizacion={reenviando}
+          sinNumero={false}
+          enviando={enviando}
+          fallo={falloEnvio}
+          alEnviar={(datos) => void reenviar(reenviando, datos)}
+          alCerrar={() => setReenviando(null)}
+        />
       ) : null}
     </div>
   );
@@ -567,6 +624,7 @@ function Tabla({
   alMarcarUna,
   alMarcarPagina,
   alPdf,
+  alEnviar,
   alReabrir,
   alMarcarEstado,
 }: {
@@ -578,6 +636,7 @@ function Tabla({
   alMarcarUna: (numero: string, marcada: boolean) => void;
   alMarcarPagina: (marcar: boolean) => void;
   alPdf: (resumen: ResumenCotizacion) => void;
+  alEnviar: (resumen: ResumenCotizacion) => void;
   alReabrir: (resumen: ResumenCotizacion) => void;
   alMarcarEstado: (resumen: ResumenCotizacion, estado: Estado) => void;
 }) {
@@ -622,6 +681,7 @@ function Tabla({
               marcada={todasFiltradas || marcadas.has(resumen.numero)}
               alMarcar={(marcada) => alMarcarUna(resumen.numero, marcada)}
               alPdf={() => alPdf(resumen)}
+              alEnviar={() => alEnviar(resumen)}
               alReabrir={() => alReabrir(resumen)}
               alMarcarEstado={(estado) => alMarcarEstado(resumen, estado)}
             />
@@ -639,6 +699,7 @@ function Fila({
   marcada,
   alMarcar,
   alPdf,
+  alEnviar,
   alReabrir,
   alMarcarEstado,
 }: {
@@ -648,6 +709,7 @@ function Fila({
   marcada: boolean;
   alMarcar: (marcada: boolean) => void;
   alPdf: () => void;
+  alEnviar: () => void;
   alReabrir: () => void;
   alMarcarEstado: (estado: Estado) => void;
 }) {
@@ -748,6 +810,14 @@ function Fila({
             disabled={ocupada}
           >
             PDF
+          </button>
+          <button
+            type="button"
+            className="boton-secundario px-3 text-xs"
+            onClick={alEnviar}
+            disabled={ocupada}
+          >
+            Enviar
           </button>
           <button
             type="button"

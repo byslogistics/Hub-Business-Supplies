@@ -22,40 +22,18 @@
 
 // --- Quién puede firmar un correo ------------------------------------------
 //
-// Para añadir o corregir una vendedora: sólo hay que editar este objeto. No
-// hace falta tocar nada más del archivo.
+// Ya no se declara aquí: el equipo vive en `compartido/equipo.js`, que es el
+// mismo archivo del que sale la lista de quién puede firmar una cotización. Lo
+// tenían escrito los dos por separado y se desincronizaron —el correo se quedó
+// con dos personas cuando el cotizador ya tenía tres—, que es exactamente lo
+// que pasa cuando un dato vive en dos sitios.
 
-/**
- * @typedef {object} Remitente
- * @property {string} id
- * @property {string} nombre
- * @property {string} cargo
- * @property {string} whatsapp
- * @property {string} correoDirecto A esta dirección llegan las respuestas.
- */
+import { BUZON_ARCHIVO, EQUIPO, ORDEN_EQUIPO, respuestasDe } from '../compartido/equipo.js';
 
-/** @type {Record<string, Remitente>} */
-export const REMITENTES = {
-  paola: {
-    id: 'paola',
-    nombre: 'Paola Vargas',
-    cargo: 'Departamento comercial',
-    whatsapp: '+57 311 253 3085',
-    // A esta dirección llegan las respuestas del cliente, aunque el correo
-    // salga técnicamente desde el dominio de la empresa (ver EMPRESA.correoVentas).
-    correoDirecto: 'byslogisticsltda@hotmail.com',
-  },
-  yeimy: {
-    id: 'yeimy',
-    nombre: 'Yeimy Mahecha',
-    cargo: 'Departamento comercial',
-    whatsapp: '+57 321 418 9261',
-    // Pendiente confirmar si Yeimy tiene un correo propio distinto al de
-    // Paola. Mientras tanto, las respuestas también llegan a este buzón
-    // compartido — cámbialo aquí si ella prefiere otro.
-    correoDirecto: 'byslogisticsltda@hotmail.com',
-  },
-};
+/** Quién puede firmar un correo. Hoy, todo el equipo comercial. */
+export const REMITENTES = EQUIPO;
+
+export { BUZON_ARCHIVO, ORDEN_EQUIPO, respuestasDe };
 
 // --- Datos fijos de la empresa ----------------------------------------------
 export const EMPRESA = {
@@ -266,6 +244,47 @@ export const PLANTILLAS = {
       )}
       ${parrafos(d.mensaje)}
       ${parrafo('Si ya realizó el pago, ignore este mensaje y disculpe la molestia.')}
+    `,
+  },
+
+  cotizacion: {
+    id: 'cotizacion',
+    nombre: 'Envío de cotización',
+    descripcion:
+      'La que usa el botón «Enviar cotización» del cotizador. No se elige aquí: sus cifras las pone el servidor leyendo la cotización guardada.',
+    colorEtiqueta: BRAND.verde600,
+    ctasSugeridos: ['whatsapp'],
+    /**
+     * No sale en el desplegable de `/correo/`.
+     *
+     * El servidor la rechaza por esa puerta —sus cifras las pone él leyendo la
+     * cotización guardada— así que ofrecerla ahí sería dejar que alguien la
+     * eligiera, llenara media pantalla y se topara con un rechazo.
+     */
+    soloCotizador: true,
+    // Los campos no se pintan en el formulario de `/correo/`: esta plantilla
+    // sólo se arma desde el cotizador, que es quien sabe de qué cotización se
+    // trata. Se declaran igual para que `renderCorreo` valide lo que llega.
+    campos: [
+      campo('nombreCliente', 'Nombre del cliente', 'text', false),
+      campo('numero', 'Número de la cotización', 'text', true),
+      campo('fecha', 'Fecha', 'text', true),
+      campo('total', 'Total', 'text', true),
+      campo('validez', 'Validez', 'text', false),
+      campo('entrega', 'Tiempo de entrega', 'text', false),
+      campo('pago', 'Forma de pago', 'text', false),
+      campo('mensaje', 'Mensaje', 'textarea', false),
+    ],
+    asunto: (d) => `Cotización ${trim(d.numero)} — B&S Logistics`,
+    cuerpo: (d) => `
+      ${saludo(d.nombreCliente)}
+      ${parrafo(
+        `Adjunto encontrará la cotización <strong>${esc(d.numero)}</strong>, con fecha ` +
+          `${esc(d.fecha)}${trim(d.validez) ? `, válida por ${esc(d.validez)}` : ''}.`,
+      )}
+      ${resumenOferta(d)}
+      ${parrafos(d.mensaje)}
+      ${parrafo('Quedo atenta a sus comentarios y con gusto ajustamos lo que necesite.')}
     `,
   },
 
@@ -486,6 +505,46 @@ function parrafos(texto) {
   const limpio = esc(texto).trim();
   if (!limpio) return '';
   return limpio.split(/\n{2,}/).map(bloqueHtml).join('');
+}
+
+/**
+ * El recuadro con las cifras de la oferta.
+ *
+ * El total va en el cuerpo, y no sólo dentro del PDF, a propósito: el cliente
+ * lo ve sin abrir el adjunto y desde el celular, que es donde se lee el primer
+ * correo. El detalle de las referencias se queda en el PDF — veinte líneas en
+ * un correo no se leen en ninguna pantalla.
+ */
+function resumenOferta(d) {
+  const filas = [
+    ['Cotización', trim(d.numero)],
+    ['Fecha', trim(d.fecha)],
+    ['Tiempo de entrega', trim(d.entrega)],
+    ['Forma de pago', trim(d.pago)],
+  ].filter(([, valor]) => Boolean(valor));
+
+  const celdas = filas
+    .map(
+      ([etiqueta, valor]) =>
+        `<tr>
+           <td style="padding:2px 12px 2px 0;font-size:13.5px;color:#5b6b7a;">${esc(etiqueta)}</td>
+           <td style="padding:2px 0;font-size:13.5px;font-weight:600;color:#1f2a36;">${esc(valor)}</td>
+         </tr>`,
+    )
+    .join('');
+
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin:0 0 16px;border:1px solid #dbe5ee;border-radius:10px;background:#f6f9fc;">
+      <tr>
+        <td style="padding:16px 18px;">
+          <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#5b6b7a;">Total de la oferta</p>
+          <p style="margin:0 0 12px;font-size:26px;font-weight:700;color:${BRAND.azul700};">${esc(d.total)}</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0">${celdas}</table>
+        </td>
+      </tr>
+    </table>
+  `;
 }
 
 function bloqueHtml(bloque) {
