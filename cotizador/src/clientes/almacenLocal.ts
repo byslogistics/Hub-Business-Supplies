@@ -15,6 +15,7 @@
 import {
   CLIENTES_POR_PAGINA,
   claveDe,
+  clienteVacio,
   claveUtil,
   coincidenciaFuerte,
   documentosParecidos,
@@ -27,6 +28,15 @@ import {
   type PaginaClientes,
   type SeleccionClientes,
 } from '../../../compartido/clientes';
+import {
+  contarAcciones,
+  examinarFila,
+  fichaRellenada,
+  FilasVistas,
+  type BuscadorClientes,
+  type FilaImportacion,
+  type FilaRevisada,
+} from '../../../compartido/importacion';
 import { correoNormal, sinTildes, soloDigitos } from '../../../compartido/texto';
 import { FalloApi } from '../api/fallo';
 import type { AlmacenClientes } from './contrato';
@@ -220,7 +230,64 @@ export const clientesLocales: AlmacenClientes = {
     guardarTodos(quedan);
     return { cuantos: fichas.length - quedan.length } satisfies CuantosClientes;
   },
+
+  // Las dos mitades de la carga por lote deciden con la misma cabeza que el
+  // servidor —`examinarFila`, en el contrato— así que la vista previa no puede
+  // enseñar un resultado que en producción sería otro.
+  async revisarImportacion(filas) {
+    const revisadas = await examinarTodas(filas);
+    return { filas: revisadas, resumen: contarAcciones(revisadas) };
+  },
+
+  async confirmarImportacion(filas) {
+    const buscador = buscadorLocal();
+    const vistas = new FilasVistas();
+    const resultado = { creados: 0, completados: 0, omitidos: 0, errores: 0 };
+
+    for (const fila of filas) {
+      const revisada = await examinarFila(fila, buscador, vistas);
+
+      if (revisada.accion === 'error') {
+        resultado.errores += 1;
+      } else if (revisada.accion === 'omitir' || revisada.accion === 'revisar') {
+        resultado.omitidos += 1;
+      } else if (revisada.accion === 'crear') {
+        await clientesLocales.crear({ ...clienteVacio(), ...fila.datos });
+        resultado.creados += 1;
+      } else {
+        const ficha = await clientesLocales.abrir(revisada.codigo!);
+        await clientesLocales.actualizar(ficha.codigo, fichaRellenada(ficha, fila.datos));
+        resultado.completados += 1;
+      }
+    }
+
+    return resultado;
+  },
 };
+
+/** Cómo busca la cabeza compartida cuando detrás sólo hay `localStorage`. */
+function buscadorLocal(): BuscadorClientes {
+  return {
+    async porCodigo(codigo) {
+      return leerTodos().find((c) => c.codigo === codigo) ?? null;
+    },
+    async coincidencia(clave) {
+      return buscarCoincidencia(leerTodos(), clave);
+    },
+  };
+}
+
+async function examinarTodas(filas: readonly FilaImportacion[]): Promise<FilaRevisada[]> {
+  const buscador = buscadorLocal();
+  const vistas = new FilasVistas();
+  const revisadas: FilaRevisada[] = [];
+
+  for (const fila of filas) {
+    revisadas.push(await examinarFila(fila, buscador, vistas));
+  }
+
+  return revisadas;
+}
 
 /** Aplica un cambio a las fichas que alcance la selección, y cuenta cuántas. */
 function conTodos(

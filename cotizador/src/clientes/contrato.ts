@@ -7,6 +7,11 @@
  */
 
 import type {
+  FilaImportacion,
+  ResultadoImportacion,
+  RevisionImportacion,
+} from '../../../compartido/importacion';
+import type {
   Cliente,
   Coincidencia,
   CuantosClientes,
@@ -44,4 +49,16 @@ export interface AlmacenClientes {
   restaurar(seleccion: SeleccionClientes): Promise<CuantosClientes>;
   /** Borra de verdad, y sólo lo que ya está en la papelera. */
   purgar(seleccion: SeleccionClientes): Promise<CuantosClientes>;
+
+  /**
+   * Dice qué pasaría con cada fila de un archivo **sin escribir nada**.
+   *
+   * Es la mitad que hace que una carga por lote se pueda usar sin miedo: se ve
+   * el resultado antes de que exista. Quien decide sigue siendo el servidor —la
+   * pantalla sólo enseña lo que él contestó— porque entre mirar la revisión y
+   * darle al botón puede pasar cualquier cosa.
+   */
+  revisarImportacion(filas: FilaImportacion[]): Promise<RevisionImportacion>;
+  /** Aplica lo que la revisión dijo, volviéndolo a comprobar todo. */
+  confirmarImportacion(filas: FilaImportacion[]): Promise<ResultadoImportacion>;
 }

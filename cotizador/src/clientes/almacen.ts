@@ -14,6 +14,7 @@ import type {
   PaginaClientes,
   SeleccionClientes,
 } from '../../../compartido/clientes';
+import type { ResultadoImportacion, RevisionImportacion } from '../../../compartido/importacion';
 import { BASE, ES_DEMOSTRACION, pedir } from '../api/pedir';
 import { clientesLocales } from './almacenLocal';
 import type { AlmacenClientes } from './contrato';
@@ -75,6 +76,18 @@ const clientesHttp: AlmacenClientes = {
   eliminar: (seleccion) => enBloque('eliminar', seleccion),
   restaurar: (seleccion) => enBloque('restaurar', seleccion),
   purgar: (seleccion) => enBloque('purgar', seleccion),
+
+  revisarImportacion: (filas) =>
+    pedir<RevisionImportacion>(`${BASE}/clientes/importar/revisar`, {
+      method: 'POST',
+      body: JSON.stringify({ filas }),
+    }),
+
+  confirmarImportacion: (filas) =>
+    pedir<ResultadoImportacion>(`${BASE}/clientes/importar/confirmar`, {
+      method: 'POST',
+      body: JSON.stringify({ filas }),
+    }),
 };
 
 function enBloque(

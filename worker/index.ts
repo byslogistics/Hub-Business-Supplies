@@ -37,6 +37,7 @@ import { cambioDe } from '../cotizador/src/dominio/moneda';
 import { totalesDeCotizacion } from '../cotizador/src/dominio/precios';
 import type { Cotizacion } from '../cotizador/src/dominio/tipos';
 import * as clientes from './clientes';
+import * as importacion from './importacion';
 import { cuerpoJson, ErrorPeticion, fallo, json } from './http';
 import { identificar, SinAcceso } from './acceso';
 import { EMPRESA, MAXIMO_ADJUNTOS_BYTES, PLANTILLAS, REMITENTES, renderCorreo } from '../correo/plantillas.js';
@@ -176,6 +177,17 @@ async function enrutarClientes(
         empresa: url.searchParams.get('empresa') ?? '',
       }),
     );
+  }
+
+  // La carga por lote, en dos pasos y nunca en uno: `revisar` cuenta qué
+  // pasaría sin escribir nada, y `confirmar` lo hace. Que sean dos direcciones
+  // distintas es lo que impide que un clic de más escriba sin que nadie haya
+  // visto lo que iba a pasar.
+  if (metodo === 'POST' && ruta === 'clientes/importar/revisar') {
+    return json(await importacion.revisar(env.BASE, peticion));
+  }
+  if (metodo === 'POST' && ruta === 'clientes/importar/confirmar') {
+    return json(await importacion.confirmar(env.BASE, peticion));
   }
 
   if (metodo === 'POST' && ruta === 'clientes/eliminar') {

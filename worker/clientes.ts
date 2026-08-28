@@ -232,7 +232,22 @@ export async function coincidencia(
 // --- Escribir ---------------------------------------------------------------
 
 export async function crear(base: D1Database, peticion: Request): Promise<Cliente> {
-  const datos = datosSeguros(await cuerpoJson<Partial<DatosCliente>>(peticion));
+  return crearConDatos(base, await cuerpoJson<Partial<DatosCliente>>(peticion));
+}
+
+/**
+ * El alta, a partir de datos que ya están en memoria.
+ *
+ * La usa la carga por lote, que lee un archivo entero y no tiene una petición
+ * HTTP por cliente. Las comprobaciones son exactamente las mismas —pasa por
+ * `datosSeguros` y por `comprobarLibre` igual que el alta de a uno— porque una
+ * fila de Excel no merece menos cuidado que un formulario.
+ */
+export async function crearConDatos(
+  base: D1Database,
+  crudo: Partial<DatosCliente>,
+): Promise<Cliente> {
+  const datos = datosSeguros(crudo);
   await comprobarLibre(base, datos, null);
 
   const codigo = await siguienteCodigo(base);
@@ -258,8 +273,17 @@ export async function actualizar(
   codigo: string,
   peticion: Request,
 ): Promise<Cliente> {
+  return actualizarConDatos(base, codigo, await cuerpoJson<Partial<DatosCliente>>(peticion));
+}
+
+/** La edición, a partir de datos que ya están en memoria. Ver `crearConDatos`. */
+export async function actualizarConDatos(
+  base: D1Database,
+  codigo: string,
+  crudo: Partial<DatosCliente>,
+): Promise<Cliente> {
   const antes = await abrir(base, codigo);
-  const datos = datosSeguros(await cuerpoJson<Partial<DatosCliente>>(peticion));
+  const datos = datosSeguros(crudo);
   await comprobarLibre(base, datos, codigo);
 
   const ahora = new Date().toISOString();

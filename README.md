@@ -331,13 +331,61 @@ para que quien lo escribió no se quede adivinando; y si esa ficha está en la
 papelera, lo dice también, porque si no se quedaría buscando en la lista a
 alguien que no sale.
 
+### Cargar clientes desde un archivo
+
+Meter doscientos clientes a mano no es una forma de empezar, así que la lista se
+puede subir desde una hoja de cálculo. Se acepta **Excel (`.xlsx`) y CSV**, y hay
+una **plantilla descargable** que trae los títulos correctos y tres clientes de
+ejemplo ya llenos —para no tener que adivinar si el NIT lleva puntos o cómo se
+separan dos correos en la misma celda—. Importarla tal cual deja el hub con esos
+tres, que llevan escrito en las notas que son de mentira.
+
+Del archivo no hace falta renombrar nada: los encabezados se reconocen sin
+tildes ni mayúsculas y por sus formas corrientes, así que «Razón social», «NIT»,
+«Vendedora» o «E-mail» entran igual que los títulos de la plantilla. De un Excel
+con varias hojas **se lee la primera**, y se dice cuál fue y cuáles quedaron
+fuera. Las columnas que no se reconocen se ignoran diciéndolo.
+
+La plantilla y la exportación son **el mismo formato**, a propósito: se puede
+exportar la lista, corregirla en Excel y volver a subirla. En ese viaje de ida y
+vuelta la columna `Código` es la que hace que cada fila vuelva a su ficha aunque
+le hayan cambiado el nombre.
+
+#### Se sube en dos pasos, y no en uno
+
+Subir el archivo **no importa nada**. Primero el servidor mira fila por fila y
+dice qué pasaría —sin escribir—, y sólo después, con eso a la vista y aprobado,
+se guarda. Es la misma idea que la papelera: una operación que toca cientos de
+fichas de una vez se equivoca en grande y en silencio, y poner una pantalla en
+medio convierte «subí el archivo que no era» en un susto de diez segundos.
+
+De cada fila se dice en cuál de estos cinco casos cae:
+
+| | Qué pasa |
+| --- | --- |
+| **Se crea** | No está en la base. |
+| **Se completa** | Ya existe: se le llenan los campos **vacíos**. Lo que ya estaba escrito y discrepa sale en ámbar y **no se toca**. |
+| **Hay que decidir** | Se parece a una ficha que existe sin ser idéntica. No se importa hasta que alguien elija: *es el mismo*, *es otro*, o *déjala fuera*. |
+| **No se puede usar** | Sin nombre, con un correo imposible, o repetida dentro del propio archivo —diciendo con qué línea choca—. |
+| **Se deja fuera** | Ya está y no trae nada nuevo. |
+
+Las dudosas no se importan solas y ésa es toda la gracia: fusionar dos clientes
+por parecido es de las pocas cosas de este hub que no se deshacen. Decidir una
+recalcula el resumen entero, para que la cifra del botón sea siempre la que va a
+ocurrir.
+
+**El botón vuelve a comprobarlo todo.** No aplica lo que la pantalla enseñó,
+sino lo que corresponde en ese momento: entre mirar la revisión y confirmar
+pueden pasar minutos, y en esos minutos la otra socia pudo dar de alta a medio
+archivo. Quien decide es la misma función en los dos pasos (`examinarFila`, en
+`compartido/importacion.ts`) — si cada uno decidiera por su cuenta, un día la
+confirmación diría «12 nuevos» y se crearían 11.
+
 ### Lo que todavía no hace
 
-Esta es la primera de varias entregas. Falta —y llega en las siguientes— la
-carga de clientes por lote desde un Excel con su pantalla de confirmación, que
-el cotizador pregunte «¿para qué cliente?» y complete la ficha al emitir, el
-botón de **enviar cotización** por correo, y que la ficha enseñe las
-cotizaciones y los correos de cada cliente.
+Falta —y llega en las siguientes entregas— que el cotizador pregunte «¿para qué
+cliente?» y complete la ficha al emitir, el botón de **enviar cotización** por
+correo, y que la ficha enseñe las cotizaciones y los correos de cada cliente.
 
 ---
 
@@ -459,7 +507,7 @@ resto de lo que pide la sección *Publicar* de abajo.
 
 ```bash
 npm run instalar     # dependencias del hub y del cotizador
-npm test             # 144 pruebas del cotizador
+npm test             # 172 pruebas del cotizador
 npm run build        # deja el sitio entero en publico/
 ```
 

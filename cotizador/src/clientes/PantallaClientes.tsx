@@ -28,6 +28,7 @@ import { CampoSelect, CampoTexto, Insignia } from '../ui/componentes';
 import { clientes } from './almacen';
 import { csvDeClientes, descargarCsv, nombreArchivo, todosLosQueCumplen } from './exportar';
 import { FichaCliente } from './FichaCliente';
+import { PantallaImportar } from './PantallaImportar';
 
 interface Props {
   alVolver: () => void;
@@ -53,7 +54,10 @@ export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
   const [abierto, setAbierto] = useState<Cliente | null>(null);
 
   const enPapelera = Boolean(filtro.papelera);
+  // Dos palabras reservadas en la dirección: no son códigos de cliente, son
+  // pantallas. Se separan aquí para que nadie intente abrir la ficha «nuevo».
   const esFichaNueva = codigoAbierto === 'nuevo';
+  const esImportar = codigoAbierto === 'importar';
 
   const limpiarSeleccion = useCallback(() => {
     setMarcados(new Set());
@@ -82,7 +86,7 @@ export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
   // La ficha se pide por su código y no se saca de la página cargada: se puede
   // llegar aquí por un enlace pegado, con el listado todavía sin cargar.
   useEffect(() => {
-    if (!codigoAbierto || esFichaNueva) {
+    if (!codigoAbierto || esFichaNueva || esImportar) {
       setAbierto(null);
       return;
     }
@@ -103,7 +107,7 @@ export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
     return () => {
       vigente = false;
     };
-  }, [codigoAbierto, esFichaNueva, alAbrir]);
+  }, [codigoAbierto, esFichaNueva, esImportar, alAbrir]);
 
   const anunciar = (mensaje: string) => {
     setAviso(mensaje);
@@ -155,6 +159,24 @@ export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
     }
   };
 
+  if (esImportar) {
+    return (
+      <PantallaImportar
+        alVolver={() => alAbrir(undefined)}
+        alTerminar={(resultado) => {
+          const partes = [
+            resultado.creados > 0 ? `${resultado.creados} ${resultado.creados === 1 ? 'creado' : 'creados'}` : '',
+            resultado.completados > 0 ? `${resultado.completados} completados` : '',
+            resultado.omitidos > 0 ? `${resultado.omitidos} sin tocar` : '',
+            resultado.errores > 0 ? `${resultado.errores} con errores` : '',
+          ].filter(Boolean);
+          anunciar(partes.length > 0 ? `Listo: ${partes.join(', ')}.` : 'No hubo nada que guardar.');
+          alAbrir(undefined);
+        }}
+      />
+    );
+  }
+
   if (codigoAbierto && (esFichaNueva || abierto)) {
     return (
       <FichaCliente
@@ -203,9 +225,14 @@ export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
             Exportar
           </button>
           {!enPapelera ? (
-            <button type="button" className="boton-primario" onClick={() => alAbrir('nuevo')}>
-              Cliente nuevo
-            </button>
+            <>
+              <button type="button" className="boton-secundario" onClick={() => alAbrir('importar')}>
+                Cargar archivo
+              </button>
+              <button type="button" className="boton-primario" onClick={() => alAbrir('nuevo')}>
+                Cliente nuevo
+              </button>
+            </>
           ) : null}
         </div>
       </div>
@@ -374,7 +401,7 @@ export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
               ? 'La papelera está vacía.'
               : hayFiltro
                 ? 'Ningún cliente cumple ese filtro.'
-                : 'Todavía no hay clientes. Créelos aquí o déjelos entrar solos al cotizar.'}
+                : 'Todavía no hay clientes. Cree uno aquí, cargue su archivo de Excel, o déjelos entrar solos al cotizar.'}
           </p>
         ) : (
           <>
