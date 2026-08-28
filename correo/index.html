@@ -152,6 +152,39 @@
 
       .campo { margin-bottom: 1rem; }
 
+      /* La lista que despliega el buscador de clientes. */
+      .resultados-cliente {
+        position: absolute;
+        z-index: 20;
+        left: 0;
+        right: 0;
+        max-height: 16rem;
+        overflow-y: auto;
+        margin-top: 0.25rem;
+        border: 1px solid var(--borde);
+        border-radius: 0.6rem;
+        background: var(--superficie);
+        box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.35);
+      }
+      .resultados-cliente button {
+        display: block;
+        width: 100%;
+        padding: 0.55rem 0.75rem;
+        border: 0;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+      }
+      .resultados-cliente button:hover,
+      .resultados-cliente button:focus-visible {
+        background: rgb(127 127 127 / 0.12);
+      }
+      .resultados-cliente .nombre { display: block; font-weight: 600; }
+      .resultados-cliente .detalle { display: block; font-size: 0.8rem; opacity: 0.7; }
+      .resultados-cliente .vacio { padding: 0.6rem 0.75rem; font-size: 0.85rem; opacity: 0.75; }
+
       .campo label {
         display: block;
         font-size: 0.8125rem;
@@ -533,6 +566,24 @@
           <p class="ayuda" id="descripcion-plantilla"></p>
 
           <h2>2. Destinatario</h2>
+          <!-- Buscar en la libreta antes de teclear una dirección: el correo
+               que está en la ficha es el que de verdad contesta, y escribirlo a
+               mano es la forma más común de equivocarse en una letra. -->
+          <div class="campo" style="position:relative;">
+            <label for="buscar-cliente">Buscar un cliente registrado</label>
+            <input
+              type="search"
+              id="buscar-cliente"
+              autocomplete="off"
+              placeholder="Nombre, NIT o correo"
+            />
+            <p class="ayuda" style="margin-top:0.35rem;">
+              Opcional: rellena el correo de abajo. También se puede escribir a mano.
+            </p>
+            <div id="resultados-cliente" class="resultados-cliente" hidden></div>
+            <p class="ayuda" id="cliente-elegido" hidden style="margin-top:0.35rem;font-weight:600;"></p>
+          </div>
+
           <div class="campo">
             <label for="destinatario">Correo del cliente</label>
             <input
@@ -662,6 +713,9 @@
       const $botonCerrarPrevia = document.getElementById('boton-cerrar-previa');
       const $anchoEscritorio = document.getElementById('ancho-escritorio');
       const $anchoCelular = document.getElementById('ancho-celular');
+      const $buscarCliente = document.getElementById('buscar-cliente');
+      const $resultadosCliente = document.getElementById('resultados-cliente');
+      const $clienteElegido = document.getElementById('cliente-elegido');
       const $campoCopia = document.getElementById('campo-copia');
       const $copia = document.getElementById('copia');
       const $copiaCorreo = document.getElementById('copia-correo');
@@ -674,6 +728,101 @@
       //
       // Si esto falla no pasa nada grave: la casilla simplemente no aparece y
       // el correo se manda igual, sin copia.
+      // --- La libreta de clientes ------------------------------------------
+      //
+      // El mismo buscador que tiene el cotizador, pero en vainilla: esta
+      // pantalla no se compila a propósito, y meterla en el empaquetador por un
+      // autocompletado costaría esa propiedad —abrirla con doble clic y verla
+      // igual que publicada— a cambio de nada.
+
+      let relojBusqueda;
+
+      function pintarResultados(clientes) {
+        $resultadosCliente.innerHTML = '';
+
+        if (clientes.length === 0) {
+          const vacio = document.createElement('p');
+          vacio.className = 'vacio';
+          vacio.textContent = 'Ningún cliente coincide. Escribe el correo a mano abajo.';
+          $resultadosCliente.append(vacio);
+        }
+
+        for (const cliente of clientes) {
+          const boton = document.createElement('button');
+          boton.type = 'button';
+
+          const nombre = document.createElement('span');
+          nombre.className = 'nombre';
+          nombre.textContent = cliente.empresa;
+
+          const detalle = document.createElement('span');
+          detalle.className = 'detalle';
+          detalle.textContent = [cliente.codigo, cliente.nit, cliente.correo]
+            .filter(Boolean)
+            .join(' · ');
+
+          boton.append(nombre, detalle);
+          boton.addEventListener('click', () => elegirCliente(cliente));
+          $resultadosCliente.append(boton);
+        }
+
+        $resultadosCliente.hidden = false;
+      }
+
+      function elegirCliente(cliente) {
+        // Sin correo no hay nada que rellenar, y decirlo es mejor que dejar el
+        // campo vacío sin explicación.
+        $destinatario.value = cliente.correo || '';
+        $clienteElegido.textContent = cliente.correo
+          ? 'Elegido: ' + cliente.empresa + ' (' + cliente.codigo + ').'
+          : cliente.empresa + ' (' + cliente.codigo + ') no tiene correo en su ficha: escríbelo abajo.';
+        $clienteElegido.hidden = false;
+        $resultadosCliente.hidden = true;
+        $buscarCliente.value = '';
+
+        // Casi todas las plantillas empiezan por el nombre del cliente: si ese
+        // campo está en pantalla y vacío, se llena con quien atiende.
+        const $nombre = document.getElementById('campo-nombreCliente');
+        if ($nombre && !$nombre.value) $nombre.value = cliente.contacto || cliente.empresa;
+
+        actualizarVista();
+      }
+
+      $buscarCliente.addEventListener('input', () => {
+        clearTimeout(relojBusqueda);
+        const aguja = $buscarCliente.value.trim();
+
+        if (aguja.length < 2) {
+          $resultadosCliente.hidden = true;
+          return;
+        }
+
+        relojBusqueda = setTimeout(() => {
+          fetch('/api/clientes?texto=' + encodeURIComponent(aguja))
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('sin clientes'))))
+            .then((pagina) => pintarResultados(pagina.clientes))
+            .catch(() => {
+              $resultadosCliente.hidden = true;
+            });
+        }, 250);
+      });
+
+      document.addEventListener('mousedown', (evento) => {
+        if (!$resultadosCliente.contains(evento.target) && evento.target !== $buscarCliente) {
+          $resultadosCliente.hidden = true;
+        }
+      });
+
+      // Se puede llegar aquí desde la ficha de un cliente, con su código en la
+      // dirección: `../correo/?cliente=CLI-0007`.
+      const codigoEnLaDireccion = new URLSearchParams(location.search).get('cliente');
+      if (codigoEnLaDireccion) {
+        fetch('/api/clientes/' + encodeURIComponent(codigoEnLaDireccion))
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('no está'))))
+          .then(elegirCliente)
+          .catch(() => undefined);
+      }
+
       fetch('/api/yo')
         .then((r) => (r.ok ? r.json() : null))
         .then((datos) => {

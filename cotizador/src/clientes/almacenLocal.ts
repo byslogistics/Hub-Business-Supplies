@@ -38,7 +38,9 @@ import {
   type FilaRevisada,
 } from '../../../compartido/importacion';
 import { correoNormal, sinTildes, soloDigitos } from '../../../compartido/texto';
+import { ACTIVIDAD_POR_FICHA, type TotalesCliente } from '../../../compartido/actividad';
 import { FalloApi } from '../api/fallo';
+import { almacenLocal as historialLocal } from '../historial/almacenLocal';
 import type { AlmacenClientes } from './contrato';
 
 const LLAVE = 'bys.clientes.demo';
@@ -239,6 +241,8 @@ export const clientesLocales: AlmacenClientes = {
     return { filas: revisadas, resumen: contarAcciones(revisadas) };
   },
 
+  actividad: (codigo) => actividadLocal(codigo),
+
   async confirmarImportacion(filas) {
     const buscador = buscadorLocal();
     const vistas = new FilasVistas();
@@ -264,6 +268,31 @@ export const clientesLocales: AlmacenClientes = {
     return resultado;
   },
 };
+
+/**
+ * La actividad de un cliente en la vista previa.
+ *
+ * Las cotizaciones salen del historial de mentira del mismo navegador; los
+ * correos, de ningún sitio: aquí no se manda ninguno, y enseñar una lista
+ * inventada haría creer que sí.
+ */
+async function actividadLocal(codigo: string) {
+  const { cotizaciones } = await historialLocal.listar({});
+  const suyas = cotizaciones
+    .filter((c) => c.clienteCodigo === codigo)
+    .slice(0, ACTIVIDAD_POR_FICHA);
+
+  const totales: TotalesCliente = { cotizado: 0, ganado: 0, pendiente: 0, perdido: 0, cuantas: 0 };
+  for (const cotizacion of suyas) {
+    totales.cotizado += cotizacion.total;
+    totales.cuantas += 1;
+    if (cotizacion.estado === 'aceptada') totales.ganado += cotizacion.total;
+    else if (cotizacion.estado === 'perdida') totales.perdido += cotizacion.total;
+    else totales.pendiente += cotizacion.total;
+  }
+
+  return { totales, cotizaciones: suyas, envios: [] };
+}
 
 /** Cómo busca la cabeza compartida cuando detrás sólo hay `localStorage`. */
 function buscadorLocal(): BuscadorClientes {

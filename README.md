@@ -7,7 +7,7 @@ y ve lo que necesita.
 ```
 /                 la portada con las tarjetas
 /cotizador/       el cotizador y el historial de cotizaciones
-/cotizador/#/clientes  la libreta de clientes de la empresa
+/cotizador/#/clientes  la libreta de clientes, con la ficha de cada uno
 /correo/          el envío de correo comercial por Resend
 /api/             el historial, los clientes y el correo por dentro
 ```
@@ -501,11 +501,51 @@ ya están en el documento de la cotización— para responder una pregunta que n
 hace. Y si el registro falla, **el envío no se cae**: el correo ya está en manos
 del cliente, y decir que falló haría que alguien lo mandara dos veces.
 
-### Lo que todavía no hace
+### La ficha del cliente, entera
 
-Falta la última entrega: que la ficha del cliente enseñe sus cotizaciones, sus
-correos y sus totales, y que el centro de correos permita elegir al destinatario
-de la base en vez de escribirlo.
+Abrir un cliente ahora responde de una vez las tres preguntas que antes obligaban
+a mirar en tres sitios: **cuánto se le ha cotizado, cuánto compró y qué se le ha
+escrito.**
+
+Arriba, cuatro cifras: **cotizado**, **ganado**, **pendiente** y **perdido**.
+«Ganado» es lo marcado como aceptado en el historial —que es lo que en este hub
+significa «lo que ha comprado»—. Van todas en pesos, incluido lo cotizado en
+dólares, convertido a la tasa que cada cotización guardó: sumar pesos y dólares
+en la misma cifra daría un número que no es dinero de ninguna clase.
+
+Debajo, sus cotizaciones con su estado, y sus correos con la fecha, el asunto, a
+quién fueron y quién los firmó.
+
+Y dos botones que ahorran el viaje de vuelta al buscador: **Cotizarle**, que
+abre el cotizador con sus datos ya puestos, y **Escribirle**, que abre el centro
+de correos con él ya elegido.
+
+#### Qué cotizaciones son suyas
+
+Las emitidas desde que existen las fichas traen el enlace y no hay ambigüedad.
+Las de antes no lo traen, y empezar cada ficha en blanco el día de la publicación
+habría sido tirar la historia de la empresa, así que también cuentan **las que
+llevan su mismo documento**, comparado por dígitos —igual que en todo el resto
+del hub, para que `830.011.234-5` y `8300112345` sean el mismo—. Esas salen en
+la lista diciendo que se reconocieron por el NIT y no por el enlace.
+
+Sin NIT no hay segunda vía, y es correcto: por nombre habría que suponer si
+«Transportes del Norte» es este cliente o el otro, y ésa es justo la clase de
+suposición que este hub no hace solo.
+
+### El centro de correos conoce a los clientes
+
+En `/correo/` hay ahora un buscador encima del campo de correo: se escriben tres
+letras y se elige, y el correo se rellena con el que está en la ficha —que es el
+que de verdad contesta, y no el que alguien recuerda a medias—. Si la plantilla
+pide el nombre del cliente y está vacío, también se llena.
+
+Se puede llegar ahí con el cliente ya elegido desde su ficha
+(`/correo/?cliente=CLI-0007`), que es lo que hace el botón «Escribirle».
+
+Va en JavaScript de toda la vida, como el resto de esa pantalla: no se compila a
+propósito —se abre con doble clic y se ve igual que publicada— y meterla en el
+empaquetador por un autocompletado costaría esa propiedad a cambio de nada.
 
 ---
 
@@ -637,7 +677,7 @@ resto de lo que pide la sección *Publicar* de abajo.
 
 ```bash
 npm run instalar     # dependencias del hub y del cotizador
-npm test             # 192 pruebas del cotizador
+npm test             # 195 pruebas del cotizador
 npm run build        # deja el sitio entero en publico/
 ```
 
@@ -691,7 +731,7 @@ Los dos comandos se vuelven a correr cada vez que aparece un archivo nuevo en
 —la moneda, la tasa y el total en divisa—, la `0004_clientes.sql` —la libreta de
 clientes y su contador de códigos—, la `0005_cotizacion_cliente.sql` —el enlace
 entre una cotización y su ficha— y la `0006_envios.sql` —el registro de lo que
-se manda— son cuatro de ésas.
+se manda— son cinco de ésas.
 
 **El despliegue no lo hace.** Cada empuje a `main` publica el código solo
 —Cloudflare Workers Builds—, pero la base no se toca: Cloudflare no sabe qué

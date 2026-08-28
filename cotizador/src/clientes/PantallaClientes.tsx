@@ -32,6 +32,8 @@ import { PantallaImportar } from './PantallaImportar';
 
 interface Props {
   alVolver: () => void;
+  /** Arranca una cotización para un cliente, con sus datos ya puestos. */
+  alCotizar: (ficha: Cliente) => void;
   /** Qué ficha está abierta, según la dirección. Vacío es el listado. */
   codigoAbierto?: string;
   /** Cambia la dirección: `undefined` vuelve al listado, `'nuevo'` da de alta. */
@@ -40,7 +42,7 @@ interface Props {
 
 const FILTRO_VACIO: FiltroClientes = { pagina: 1 };
 
-export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
+export function PantallaClientes({ alVolver, alCotizar, codigoAbierto, alAbrir }: Props) {
   const [filtro, setFiltro] = useState<FiltroClientes>(FILTRO_VACIO);
   const [pagina, setPagina] = useState<PaginaClientes | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -183,6 +185,7 @@ export function PantallaClientes({ alVolver, codigoAbierto, alAbrir }: Props) {
         cliente={esFichaNueva ? null : abierto}
         alVolver={() => alAbrir(undefined)}
         alAbrirOtro={(codigo) => alAbrir(codigo)}
+        alCotizar={alCotizar}
         alGuardar={(cliente) => {
           anunciar(
             esFichaNueva

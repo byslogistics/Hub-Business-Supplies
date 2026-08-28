@@ -197,6 +197,13 @@ async function enrutarClientes(
     return json(await clientes.purgar(env.BASE, await clientes.leerSeleccion(peticion)));
   }
 
+  // Va antes que el detalle por lo mismo que `coincidencia`: las dos son GET
+  // bajo `clientes/…` y sin este orden se leería como un código de cliente.
+  const actividad = /^clientes\/([^/]+)\/actividad$/.exec(ruta);
+  if (actividad && metodo === 'GET') {
+    return json(await clientes.actividad(env.BASE, decodeURIComponent(actividad[1]!)));
+  }
+
   const detalle = /^clientes\/([^/]+)$/.exec(ruta);
   if (detalle) {
     const codigo = decodeURIComponent(detalle[1]!);

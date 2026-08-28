@@ -71,6 +71,13 @@ export default function App() {
           alVolver={() => ir('cotizador')}
           codigoAbierto={ruta.codigo}
           alAbrir={(codigo) => ir('clientes', codigo)}
+          alCotizar={(ficha) => {
+            // Sin reiniciar la cotización en curso: quien pulsa «cotizarle»
+            // desde una ficha suele estar empezando, y descartarle sin avisar
+            // lo que tuviera a medias sería peor que dejarlo.
+            estado.despachar({ tipo: 'elegirCliente', ficha });
+            ir('cotizador');
+          }}
         />
       ) : (
         <Cotizador

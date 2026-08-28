@@ -34,6 +34,13 @@ import {
   type PaginaClientes,
   type SeleccionClientes,
 } from '../compartido/clientes';
+import {
+  ACTIVIDAD_POR_FICHA,
+  type ActividadCliente,
+  type ResumenEnvio,
+  type TotalesCliente,
+} from '../compartido/actividad';
+import type { ResumenCotizacion } from '../compartido/historial';
 import { correoNormal, pareceCorreo, sinTildes, soloDigitos } from '../compartido/texto';
 import { cuerpoJson, ErrorPeticion, texto } from './http';
 
@@ -227,6 +234,136 @@ export async function coincidencia(
   }
 
   return { coincidencia: null };
+}
+
+/**
+ * Todo lo que ha pasado con un cliente.
+ *
+ * Tres consultas y una decisión: **qué cotizaciones son suyas**.
+ *
+ * Las emitidas desde que existen las fichas traen el enlace y no hay
+ * ambigüedad. Las de antes no, y perderlas sería empezar la ficha de cada
+ * cliente en blanco el día que se publique esto. Así que también cuentan las
+ * que no tienen enlace y llevan **su mismo documento**, comparado por dígitos
+ * —que es como se compara un NIT en todo el resto del hub—.
+ *
+ * Sin NIT no hay segunda vía, y es correcto: por nombre habría que decidir si
+ * «Transportes del Norte» es este cliente o el otro, y esa es justo la clase de
+ * suposición que este hub no hace sola.
+ */
+export async function actividad(base: D1Database, codigo: string): Promise<ActividadCliente> {
+  const cliente = await abrir(base, codigo);
+  const nit = soloDigitos(cliente.nit);
+
+  // `REPLACE` anidado deja el NIT guardado en sólo dígitos dentro de la propia
+  // consulta. Es feo y es lo que hay: la columna se escribió tal como la tecleó
+  // quien cotizó, con sus puntos y su guion, y las filas viejas no se van a
+  // reescribir para esto.
+  const mismoDocumento = nit
+    ? `OR (cliente_codigo IS NULL AND REPLACE(REPLACE(REPLACE(cliente_nit, '.', ''), '-', ''), ' ', '') = ?)`
+    : '';
+  const donde = `WHERE eliminada_en IS NULL AND (cliente_codigo = ? ${mismoDocumento})`;
+  const valores = nit ? [codigo, nit] : [codigo];
+
+  const [resumen, filas, correos] = await base.batch<Record<string, unknown>>([
+    base
+      .prepare(
+        `SELECT estado, COUNT(*) AS cuantas, COALESCE(SUM(total), 0) AS suma
+           FROM cotizaciones ${donde} GROUP BY estado`,
+      )
+      .bind(...valores),
+    base
+      .prepare(
+        `SELECT numero, fecha, emitida_en, autor, asesor,
+                cliente_empresa, cliente_nit, cliente_contacto, cliente_codigo,
+                total, total_divisa, moneda, tasa,
+                unidades, estado, estado_nota, estado_en, estado_por,
+                eliminada_en, eliminada_por
+           FROM cotizaciones ${donde}
+          ORDER BY emitida_en DESC
+          LIMIT ?`,
+      )
+      .bind(...valores, ACTIVIDAD_POR_FICHA),
+    base
+      .prepare(
+        `SELECT * FROM envios WHERE cliente_codigo = ? ORDER BY enviado_en DESC LIMIT ?`,
+      )
+      .bind(codigo, ACTIVIDAD_POR_FICHA),
+  ]);
+
+  return {
+    totales: totalesDe(resumen?.results ?? []),
+    cotizaciones: (filas?.results ?? []).map(aResumenCotizacion),
+    envios: (correos?.results ?? []).map(aResumenEnvio),
+  };
+}
+
+/** Las cuatro cifras, a partir del recuento por estado. */
+function totalesDe(filas: readonly Record<string, unknown>[]): TotalesCliente {
+  const totales: TotalesCliente = { cotizado: 0, ganado: 0, pendiente: 0, perdido: 0, cuantas: 0 };
+
+  for (const fila of filas) {
+    const suma = Number(fila.suma ?? 0);
+    const cuantas = Number(fila.cuantas ?? 0);
+
+    totales.cotizado += suma;
+    totales.cuantas += cuantas;
+
+    if (fila.estado === 'aceptada') totales.ganado += suma;
+    else if (fila.estado === 'perdida') totales.perdido += suma;
+    else totales.pendiente += suma;
+  }
+
+  return totales;
+}
+
+/**
+ * Una fila de cotización, para la ficha.
+ *
+ * Es una copia reducida de `aResumen` del enrutador, y no una importación,
+ * porque traerse aquella arrastraría media lógica del historial —la moneda, la
+ * conversión, los estados— a un módulo que sólo necesita pintar una lista. Lo
+ * que sí comparten es la forma: `ResumenCotizacion`, del contrato.
+ */
+function aResumenCotizacion(fila: Record<string, unknown>): ResumenCotizacion {
+  const moneda = fila.moneda === 'USD' ? 'USD' : 'COP';
+
+  return {
+    numero: String(fila.numero),
+    fecha: String(fila.fecha),
+    emitidaEn: String(fila.emitida_en),
+    autor: String(fila.autor ?? ''),
+    asesor: String(fila.asesor ?? ''),
+    cliente: String(fila.cliente_empresa ?? ''),
+    nit: String(fila.cliente_nit ?? ''),
+    contacto: String(fila.cliente_contacto ?? ''),
+    clienteCodigo: fila.cliente_codigo ? String(fila.cliente_codigo) : null,
+    total: Number(fila.total ?? 0),
+    totalMoneda: Number(fila.total_divisa) || Number(fila.total ?? 0),
+    moneda,
+    tasa: Number(fila.tasa) > 0 ? Number(fila.tasa) : 1,
+    unidades: Number(fila.unidades ?? 0),
+    estado: fila.estado === 'aceptada' || fila.estado === 'perdida' ? fila.estado : 'emitida',
+    estadoNota: String(fila.estado_nota ?? ''),
+    estadoEn: fila.estado_en ? String(fila.estado_en) : null,
+    estadoPor: fila.estado_por ? String(fila.estado_por) : null,
+    eliminadaEn: null,
+    eliminadaPor: null,
+  };
+}
+
+function aResumenEnvio(fila: Record<string, unknown>): ResumenEnvio {
+  return {
+    id: String(fila.id),
+    enviadoEn: String(fila.enviado_en ?? ''),
+    autor: String(fila.autor ?? ''),
+    remitenteId: String(fila.remitente_id ?? ''),
+    plantillaId: String(fila.plantilla_id ?? ''),
+    asunto: String(fila.asunto ?? ''),
+    destinatarios: listaGuardada(fila.destinatarios),
+    cotizacionNumero: fila.cotizacion_numero ? String(fila.cotizacion_numero) : null,
+    adjuntos: Number(fila.adjuntos ?? 0),
+  };
 }
 
 // --- Escribir ---------------------------------------------------------------

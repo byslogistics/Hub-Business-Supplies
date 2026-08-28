@@ -14,6 +14,7 @@ import type {
   PaginaClientes,
   SeleccionClientes,
 } from '../../../compartido/clientes';
+import type { ActividadCliente } from '../../../compartido/actividad';
 import type { ResultadoImportacion, RevisionImportacion } from '../../../compartido/importacion';
 import { BASE, ES_DEMOSTRACION, pedir } from '../api/pedir';
 import { clientesLocales } from './almacenLocal';
@@ -88,6 +89,9 @@ const clientesHttp: AlmacenClientes = {
       method: 'POST',
       body: JSON.stringify({ filas }),
     }),
+
+  actividad: (codigo) =>
+    pedir<ActividadCliente>(`${BASE}/clientes/${encodeURIComponent(codigo)}/actividad`),
 };
 
 function enBloque(

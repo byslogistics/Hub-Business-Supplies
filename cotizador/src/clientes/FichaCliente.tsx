@@ -29,6 +29,7 @@ import { pareceCorreo } from '../../../compartido/texto';
 import { FalloApi } from '../api/fallo';
 import { ASESORES, CIUDADES_CON_FLETE } from '../datos/empresa';
 import { CampoSelect, CampoTexto, Insignia, Seccion } from '../ui/componentes';
+import { ActividadDelCliente } from './ActividadCliente';
 import { clientes } from './almacen';
 
 interface Props {
@@ -39,6 +40,8 @@ interface Props {
   alGuardar: (cliente: Cliente) => void;
   /** Lleva a la ficha de otro cliente: la que resultó ser la misma. */
   alAbrirOtro: (codigo: string) => void;
+  /** Arranca una cotización para este cliente, con sus datos ya puestos. */
+  alCotizar: (ficha: Cliente) => void;
 }
 
 /** Los datos editables de una ficha existente, o una en blanco. */
@@ -49,7 +52,7 @@ function datosDe(cliente: Cliente | null): DatosCliente {
   return datos;
 }
 
-export function FichaCliente({ cliente, alVolver, alGuardar, alAbrirOtro }: Props) {
+export function FichaCliente({ cliente, alVolver, alGuardar, alAbrirOtro, alCotizar }: Props) {
   const [datos, setDatos] = useState<DatosCliente>(() => datosDe(cliente));
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState('');
@@ -141,9 +144,26 @@ export function FichaCliente({ cliente, alVolver, alGuardar, alAbrirOtro }: Prop
             )}
           </p>
         </div>
-        <button type="button" className="boton-secundario" onClick={alVolver}>
-          Volver a la lista
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {cliente ? (
+            <>
+              {/* Las dos cosas que se hacen desde una ficha, sin tener que ir a
+                  buscar el cliente otra vez en la pantalla de al lado. */}
+              <button type="button" className="boton-secundario" onClick={() => alCotizar(cliente)}>
+                Cotizarle
+              </button>
+              <a
+                className="boton-secundario"
+                href={`../correo/?cliente=${encodeURIComponent(cliente.codigo)}`}
+              >
+                Escribirle
+              </a>
+            </>
+          ) : null}
+          <button type="button" className="boton-secundario" onClick={alVolver}>
+            Volver a la lista
+          </button>
+        </div>
       </div>
 
       {fallo ? (
@@ -293,6 +313,10 @@ export function FichaCliente({ cliente, alVolver, alGuardar, alAbrirOtro }: Prop
           ))}
         </datalist>
       </Seccion>
+
+      {/* La historia va antes de los campos editables: quien abre una ficha
+          casi siempre viene a mirar, no a corregir. */}
+      {cliente ? <ActividadDelCliente codigo={cliente.codigo} /> : null}
 
       <Seccion titulo="Cómo lo llevamos">
         <div className="grid gap-3 sm:grid-cols-2">

@@ -6,6 +6,7 @@
  * navegador— dependen de esto y no la una de la otra.
  */
 
+import type { ActividadCliente } from '../../../compartido/actividad';
 import type {
   FilaImportacion,
   ResultadoImportacion,
@@ -61,4 +62,13 @@ export interface AlmacenClientes {
   revisarImportacion(filas: FilaImportacion[]): Promise<RevisionImportacion>;
   /** Aplica lo que la revisión dijo, volviéndolo a comprobar todo. */
   confirmarImportacion(filas: FilaImportacion[]): Promise<ResultadoImportacion>;
+
+  /**
+   * Qué le hemos cotizado, qué compró y qué se le ha escrito.
+   *
+   * Aparte de `abrir` porque son tres consultas más y la lista de clientes no
+   * las necesita: abrir doscientas fichas para pintar una tabla saldría caro
+   * por nada.
+   */
+  actividad(codigo: string): Promise<ActividadCliente>;
 }
