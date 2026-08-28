@@ -163,6 +163,18 @@ export interface Cotizacion {
    */
   catalogoVersion: string;
   cliente: Cliente;
+  /**
+   * La ficha del cliente a la que pertenece esta cotización (`CLI-0007`).
+   *
+   * Es un enlace, no una copia: los datos que se imprimen siguen siendo los de
+   * `cliente`, congelados como estaban al emitir. Esto sólo sirve para la
+   * pregunta contraria —«¿qué le hemos cotizado a éste?»— y para que corregir
+   * un nombre en la ficha no desconecte su historia.
+   *
+   * Vacío en las cotizaciones de antes de que existieran las fichas, y en las
+   * que se emiten sin elegir cliente.
+   */
+  clienteCodigo?: string;
   lineas: Linea[];
   condiciones: Condiciones;
 }

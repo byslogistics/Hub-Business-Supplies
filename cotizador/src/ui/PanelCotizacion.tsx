@@ -1,5 +1,6 @@
 /** Datos del cliente, condiciones comerciales y totales. */
 
+import { BuscadorCliente } from '../clientes/BuscadorCliente';
 import { CIUDADES_CON_FLETE, ASESORES, TASA_USD_SUGERIDA } from '../datos/empresa';
 import { NOTAS_FRECUENTES, PLANTILLAS } from '../datos/condiciones';
 import { dinero, fechaLarga, pesos, sumarDias, unidades } from '../dominio/formato';
@@ -28,6 +29,15 @@ export function DatosCliente({
 
   return (
     <Seccion titulo="Cliente">
+      {/* Elegir una ficha llena los seis campos de abajo. No es obligatorio:
+          escribiéndolos a mano, la ficha se crea sola al emitir. */}
+      <div className="mb-4">
+        <BuscadorCliente
+          codigo={cotizacion.clienteCodigo}
+          alElegir={(ficha) => despachar({ tipo: 'elegirCliente', ficha })}
+        />
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <CampoTexto

@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useReducer } from 'react';
 
+import type { Cliente as FichaCliente } from '../../../compartido/clientes';
 import { PLANTILLAS, type ClavePlantilla } from '../datos/condiciones';
 import { catalogo, productoPorId } from '../dominio/catalogo';
 import {
@@ -31,11 +32,13 @@ type Accion =
   | { tipo: 'editarLinea'; id: string; cambios: Partial<Linea> }
   | { tipo: 'moverLinea'; id: string; direccion: -1 | 1 }
   | { tipo: 'editarCliente'; cambios: Partial<Cliente> }
+  /** Enlaza la cotización con una ficha y copia sus datos. `null` desenlaza. */
+  | { tipo: 'elegirCliente'; ficha: FichaCliente | null }
   | { tipo: 'editarCondiciones'; cambios: Partial<Condiciones> }
   | { tipo: 'aplicarPlantilla'; clave: ClavePlantilla }
   | {
       tipo: 'editarCabecera';
-      cambios: Partial<Pick<Cotizacion, 'asesor' | 'fecha' | 'numero' | 'iva'>>;
+      cambios: Partial<Pick<Cotizacion, 'asesor' | 'fecha' | 'numero' | 'iva' | 'clienteCodigo'>>;
     }
   /** Pasa la cotización a otra moneda, o a otra tasa dentro de la misma. */
   | { tipo: 'cambiarDivisa'; cambio: Cambio }
@@ -84,7 +87,33 @@ function reducir(estado: Cotizacion, accion: Accion): Cotizacion {
     }
 
     case 'editarCliente':
+      // Editar un campo **no** desenlaza: corregir el teléfono de un cliente
+      // enlazado es corriente, y lo que se haga con esa corrección se decide al
+      // emitir, no mientras se escribe.
       return { ...estado, cliente: { ...estado.cliente, ...accion.cambios } };
+
+    case 'elegirCliente': {
+      if (!accion.ficha) {
+        // Desenlazar deja los datos escritos donde están: quien lo hace quiere
+        // soltar la ficha, no vaciar la cotización que está armando.
+        return { ...estado, clienteCodigo: undefined };
+      }
+
+      const { ficha } = accion;
+      return {
+        ...estado,
+        clienteCodigo: ficha.codigo,
+        cliente: {
+          ...estado.cliente,
+          empresa: ficha.empresa,
+          nit: ficha.nit,
+          contacto: ficha.contacto,
+          telefono: ficha.telefono || ficha.whatsapp,
+          email: ficha.correo,
+          ciudad: ficha.ciudad,
+        },
+      };
+    }
 
     case 'editarCondiciones':
       return { ...estado, condiciones: { ...estado.condiciones, ...accion.cambios } };

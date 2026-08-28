@@ -22,6 +22,9 @@ import type { Moneda } from './dominio/moneda';
 import { EMPRESA } from './datos/empresa';
 import type { Cotizacion, Producto } from './dominio/tipos';
 import { almacen, ES_DEMOSTRACION, FalloApi } from './historial/almacen';
+import { clientes } from './clientes/almacen';
+import { aplicar, compararCon, hayQuePreguntar, planDe, type Plan, type Resolucion } from './clientes/conciliar';
+import { PanelConciliacion, type Respuesta } from './clientes/PanelConciliacion';
 import { PantallaClientes } from './clientes/PantallaClientes';
 import { PantallaHistorial } from './historial/PantallaHistorial';
 import { abrirWhatsapp, copiarMensaje, descargarPdf, verPdf } from './ui/acciones';
@@ -109,6 +112,18 @@ function Cotizador({
   const [aviso, setAviso] = useState('');
   const [panel, setPanel] = useState<Panel>('catalogo');
   const [emitiendo, setEmitiendo] = useState(false);
+  /**
+   * La pregunta que está esperando respuesta antes de emitir.
+   *
+   * `resolver` es la otra mitad de la promesa que la emisión está esperando: la
+   * ventana contesta y el flujo sigue justo donde se quedó. Sin esto habría que
+   * partir «emitir» en dos mitades que se comunican por estado, que es la forma
+   * de que un día una de las dos se ejecute sin la otra.
+   */
+  const [conciliacion, setConciliacion] = useState<{
+    plan: Plan;
+    resolver: (respuesta: Respuesta) => void;
+  } | null>(null);
 
   const vacia = cotizacion.lineas.length === 0;
 
@@ -124,6 +139,64 @@ function Cotizador({
   const agregar = (producto: Producto) => {
     despachar({ tipo: 'agregar', producto });
     anunciar(`${producto.nombre} añadido a la cotización.`);
+  };
+
+  /** Enseña la ventana y espera a que alguien conteste. */
+  const preguntar = (plan: Plan): Promise<Respuesta> =>
+    new Promise((resolver) => setConciliacion({ plan, resolver }));
+
+  /**
+   * Pone al día la ficha del cliente antes de que la cotización salga.
+   *
+   * Va **antes** de registrar a propósito: si quien emite cancela una de las
+   * preguntas, no se ha gastado número ni se ha guardado nada.
+   *
+   * Si algo falla por razones técnicas, la cotización sale igual y se avisa. La
+   * prioridad no está en duda: el cliente está esperando su oferta, y una ficha
+   * sin actualizar se arregla después desde el panel de clientes; una
+   * cotización que no salió, no.
+   */
+  const sincronizarCliente = async (
+    actual: Cotizacion,
+  ): Promise<{ codigo?: string; cancelado?: boolean; aviso?: string }> => {
+    try {
+      let plan = await planDe(actual, clientes);
+      if (!plan) return {};
+
+      // Primera pregunta: ¿es el mismo cliente que ese que se le parece?
+      if (plan.parecido) {
+        const respuesta = await preguntar(plan);
+        setConciliacion(null);
+        if (!respuesta) return { cancelado: true };
+
+        plan =
+          respuesta.tipo === 'esElMismo'
+            ? {
+                ...plan,
+                parecido: null,
+                ficha: respuesta.coincidencia.cliente,
+                ...compararCon(respuesta.coincidencia.cliente, actual),
+              }
+            : { ...plan, parecido: null };
+      }
+
+      // Segunda: qué hacer con cada dato que discrepa.
+      let resoluciones: Record<string, Resolucion> = {};
+      if (hayQuePreguntar(plan)) {
+        const respuesta = await preguntar(plan);
+        setConciliacion(null);
+        if (!respuesta) return { cancelado: true };
+        if (respuesta.tipo === 'resoluciones') resoluciones = respuesta.resoluciones;
+      }
+
+      return { codigo: await aplicar(plan, resoluciones, actual, clientes) };
+    } catch (error) {
+      console.error(error);
+      setConciliacion(null);
+      return {
+        aviso: 'La cotización salió, pero la ficha del cliente no se pudo actualizar.',
+      };
+    }
   };
 
   /**
@@ -147,9 +220,21 @@ function Cotizador({
     setEmitiendo(true);
 
     try {
-      const { numero } = await almacen.registrar(cotizacion);
-      if (numero !== cotizacion.numero) despachar({ tipo: 'numeroAsignado', numero });
-      await accion({ ...cotizacion, numero });
+      // La ficha primero: cancelar aquí no gasta número ni guarda nada.
+      const ficha = await sincronizarCliente(cotizacion);
+      if (ficha.cancelado) return;
+
+      const conCliente = ficha.codigo ? { ...cotizacion, clienteCodigo: ficha.codigo } : cotizacion;
+      if (ficha.codigo && ficha.codigo !== cotizacion.clienteCodigo) {
+        despachar({ tipo: 'editarCabecera', cambios: { clienteCodigo: ficha.codigo } });
+      }
+
+      const { numero } = await almacen.registrar(conCliente);
+      if (numero !== conCliente.numero) despachar({ tipo: 'numeroAsignado', numero });
+      await accion({ ...conCliente, numero });
+
+      // Después de la acción, para que no lo tape el «mensaje copiado».
+      if (ficha.aviso) anunciar(ficha.aviso, 6000);
     } catch (error) {
       console.error(error);
       anunciar(
@@ -377,6 +462,13 @@ function Cotizador({
         alWhatsapp={acciones.whatsapp}
         alDescargar={acciones.descargar}
       />
+
+      {conciliacion ? (
+        <PanelConciliacion
+          plan={conciliacion.plan}
+          alResponder={(respuesta) => conciliacion.resolver(respuesta)}
+        />
+      ) : null}
 
       <div
         aria-live="polite"

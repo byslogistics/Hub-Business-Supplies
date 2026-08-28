@@ -150,6 +150,7 @@ export const almacenLocal: Almacen = {
       cliente: cotizacion.cliente?.empresa ?? '',
       nit: cotizacion.cliente?.nit ?? '',
       contacto: cotizacion.cliente?.contacto ?? '',
+      clienteCodigo: cotizacion.clienteCodigo?.trim() || null,
       // Igual que el Worker: `total` en pesos —es con lo que se suma y se
       // ordena— y `totalMoneda` tal como lo dice el documento.
       total: Math.round(totales.total * cambio.tasa),

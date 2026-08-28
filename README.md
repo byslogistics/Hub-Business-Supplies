@@ -381,11 +381,59 @@ archivo. Quien decide es la misma función en los dos pasos (`examinarFila`, en
 `compartido/importacion.ts`) — si cada uno decidiera por su cuenta, un día la
 confirmación diría «12 nuevos» y se crearían 11.
 
+### El cotizador pregunta para quién
+
+Arriba de los datos del cliente hay un buscador: se escriben tres letras del
+nombre, el NIT o el correo, se elige, y los seis campos se llenan solos con lo
+que la ficha tenga hoy. **No es obligatorio**: se puede seguir escribiendo a
+mano como siempre, y al emitir la ficha se crea sola. Obligar a elegir antes de
+empezar estorbaría en la cotización de afán, que es justo cuando nadie quiere
+pelearse con un buscador.
+
+Cada cotización guarda además a qué ficha pertenece (`clienteCodigo`). Es un
+enlace, no una copia: lo que se imprime siguen siendo los datos del documento,
+congelados como estaban al emitir, porque el PDF que el cliente tiene en la mano
+dice el nombre que decía **ese día**. El enlace sólo sirve para la pregunta
+contraria —«¿qué le hemos cotizado a éste?»— y para que corregir un nombre en la
+ficha no desconecte su historia.
+
+#### La regla de oro
+
+Al emitir, la ficha se pone al día. Y ahí está la única regla que hay que
+recordar de todo esto:
+
+> **La ficha manda. La cotización sólo toma prestado.**
+
+De ella salen cuatro comportamientos, y ninguno más:
+
+| Situación | Qué pasa |
+| --- | --- |
+| La ficha tiene el campo **vacío** | Se llena solo, sin preguntar. No hay nada que perder al llenar un hueco. |
+| El dato es **el mismo** | Nada. |
+| El **teléfono o el correo** discrepan | Se pregunta: *dejar la ficha como está* (ya marcado), *guardar los dos*, o *reemplazar*. |
+| La **empresa, el contacto o la ciudad** discrepan | Se pregunta: *dejar como está* (ya marcado) o *reemplazar*. |
+| El **NIT** discrepa | No se ofrece cambiarlo. Un documento distinto no es una corrección, es otro cliente, y la salida es elegir o crear la ficha correcta. |
+
+**Ni siquiera reemplazar pierde el dato anterior**: baja a la lista de correos o
+teléfonos adicionales de la ficha. Nada se borra nunca desde una cotización;
+quitar un teléfono es un acto deliberado, y sólo se puede hacer desde el panel
+de clientes.
+
+Y cuando la cotización se parece a una ficha sin ser idéntica —el NIT con y sin
+dígito de verificación, el mismo correo, el mismo nombre— **no se enlaza sola**:
+pregunta si es el mismo cliente. Sólo el documento idéntico enlaza sin
+consultar.
+
+**Todo esto ocurre antes de registrar nada.** Si quien emite cancela, no se
+gastó número ni se guardó nada. Y si la sincronización falla por una razón
+técnica, la cotización sale igual y se avisa: el cliente está esperando su
+oferta, y una ficha sin actualizar se arregla después desde el panel; una
+cotización que no salió, no.
+
 ### Lo que todavía no hace
 
-Falta —y llega en las siguientes entregas— que el cotizador pregunte «¿para qué
-cliente?» y complete la ficha al emitir, el botón de **enviar cotización** por
-correo, y que la ficha enseñe las cotizaciones y los correos de cada cliente.
+Falta —y llega en las siguientes entregas— el botón de **enviar cotización** por
+correo, y que la ficha del cliente enseñe sus cotizaciones y sus correos.
 
 ---
 
@@ -507,7 +555,7 @@ resto de lo que pide la sección *Publicar* de abajo.
 
 ```bash
 npm run instalar     # dependencias del hub y del cotizador
-npm test             # 172 pruebas del cotizador
+npm test             # 184 pruebas del cotizador
 npm run build        # deja el sitio entero en publico/
 ```
 
@@ -558,8 +606,9 @@ npm run migrar:local    # y en la de pruebas, para el `npm run dev`
 Los dos comandos se vuelven a correr cada vez que aparece un archivo nuevo en
 `migraciones/`: aplican sólo lo que falte y no repiten lo ya aplicado. La
 `0002_papelera.sql` —las dos columnas de la papelera—, la `0003_moneda.sql`
-—la moneda, la tasa y el total en divisa— y la `0004_clientes.sql` —la libreta
-de clientes y su contador de códigos— son tres de ésas.
+—la moneda, la tasa y el total en divisa—, la `0004_clientes.sql` —la libreta de
+clientes y su contador de códigos— y la `0005_cotizacion_cliente.sql` —el enlace
+entre una cotización y su ficha— son cuatro de ésas.
 
 **El despliegue no lo hace.** Cada empuje a `main` publica el código solo
 —Cloudflare Workers Builds—, pero la base no se toca: Cloudflare no sabe qué

@@ -450,15 +450,18 @@ async function registrar(
     .prepare(
       `INSERT INTO cotizaciones (
          numero, fecha, emitida_en, autor, asesor,
-         cliente_empresa, cliente_nit, cliente_contacto,
+         cliente_empresa, cliente_nit, cliente_contacto, cliente_codigo,
          total, total_divisa, moneda, tasa, unidades, catalogo_version, documento
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(numero) DO UPDATE SET
          fecha            = excluded.fecha,
          asesor           = excluded.asesor,
          cliente_empresa  = excluded.cliente_empresa,
          cliente_nit      = excluded.cliente_nit,
          cliente_contacto = excluded.cliente_contacto,
+         -- Se refresca al reemitir: si el asesor eligió otra ficha antes de
+         -- volver a mandarla, la cotización tiene que acabar donde él dijo.
+         cliente_codigo   = excluded.cliente_codigo,
          total            = excluded.total,
          total_divisa     = excluded.total_divisa,
          moneda           = excluded.moneda,
@@ -481,6 +484,9 @@ async function registrar(
       documento.cliente?.empresa ?? '',
       documento.cliente?.nit ?? '',
       documento.cliente?.contacto ?? '',
+      // `null` y no cadena vacía: es «no hay ficha», no «la ficha se llama
+      // vacío». Así la columna se puede consultar con IS NULL.
+      documento.clienteCodigo?.trim() || null,
       totalEnPesos,
       totales.total,
       cambio.moneda,
@@ -719,7 +725,7 @@ async function listar(base: D1Database, filtro: FiltroHistorial): Promise<Pagina
     base
       .prepare(
         `SELECT numero, fecha, emitida_en, autor, asesor,
-                cliente_empresa, cliente_nit, cliente_contacto,
+                cliente_empresa, cliente_nit, cliente_contacto, cliente_codigo,
                 total, total_divisa, moneda, tasa,
                 unidades, estado, estado_nota, estado_en, estado_por,
                 eliminada_en, eliminada_por
@@ -904,6 +910,7 @@ function aResumen(fila: Record<string, unknown>): ResumenCotizacion {
     cliente: String(fila.cliente_empresa ?? ''),
     nit: String(fila.cliente_nit ?? ''),
     contacto: String(fila.cliente_contacto ?? ''),
+    clienteCodigo: fila.cliente_codigo ? String(fila.cliente_codigo) : null,
     total: Number(fila.total ?? 0),
     // `?? ` no basta: la columna se añadió con `DEFAULT 0`, así que una fila
     // escrita entre la migración y el despliegue del código nuevo trae un cero

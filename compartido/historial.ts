@@ -70,6 +70,14 @@ export interface ResumenCotizacion {
   nit: string;
   contacto: string;
   /**
+   * La ficha del cliente, cuando la cotización se emitió enlazada a una.
+   *
+   * `null` en lo emitido antes de que existieran las fichas. La ficha las
+   * encuentra igual por NIT, así que no se pierde nada; con el código la
+   * respuesta es exacta y no depende de cómo se escribió el nombre.
+   */
+  clienteCodigo: string | null;
+  /**
    * El total **en pesos**, siempre, aunque la cotización se haya emitido en
    * dólares: convertido con la tasa que ella misma guarda.
    *
