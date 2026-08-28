@@ -16,29 +16,21 @@ import type {
   FiltroHistorial,
   Identidad,
   PaginaHistorial,
-  ErrorApi,
   Seleccion,
 } from '../../../compartido/historial';
+import { BASE, ES_DEMOSTRACION, pedir } from '../api/pedir';
 import type { Cotizacion } from '../dominio/tipos';
 import { almacenLocal } from './almacenLocal';
-import { FalloHistorial, type Almacen } from './contrato';
+import type { Almacen } from './contrato';
 
 // El resto de la aplicación pide el historial por aquí y no tiene por qué
 // saber que el contrato vive en otro archivo.
-export { FalloHistorial } from './contrato';
+export { FalloApi } from './contrato';
 export type { Almacen, CodigoFallo } from './contrato';
 
-const BASE = '/api';
-
-/**
- * La vista previa no tiene servidor detrás.
- *
- * Se decide al construir y no en marcha: el despliegue de producción nunca
- * define `VITE_DEMO`, así que el almacén de mentira ni siquiera llega al
- * paquete. Es lo que impide que una cotización de verdad acabe guardada en el
- * navegador de alguien creyendo que quedó registrada.
- */
-export const ES_DEMOSTRACION = import.meta.env.VITE_DEMO === '1';
+// Se sigue exportando desde aquí porque media aplicación lo pide por este
+// nombre; vive en `api/pedir.ts` porque ahora lo miran dos almacenes.
+export { ES_DEMOSTRACION } from '../api/pedir';
 
 /**
  * Arma la dirección del listado a partir del filtro.
@@ -60,34 +52,6 @@ export function urlDelListado(filtro: FiltroHistorial, base = BASE): string {
 
   const cadena = parametros.toString();
   return cadena ? `${base}/cotizaciones?${cadena}` : `${base}/cotizaciones`;
-}
-
-async function pedir<T>(url: string, opciones: RequestInit = {}): Promise<T> {
-  let respuesta: Response;
-
-  try {
-    respuesta = await fetch(url, {
-      ...opciones,
-      headers: { 'Content-Type': 'application/json', ...opciones.headers },
-    });
-  } catch {
-    // `fetch` sólo lanza cuando la petición no llegó a salir: sin red, DNS
-    // caído, servidor inalcanzable. Un 500 no pasa por aquí.
-    throw new FalloHistorial(
-      'sin-conexion',
-      'Sin conexión con el servidor. Revise la red y vuelva a intentarlo.',
-    );
-  }
-
-  if (!respuesta.ok) {
-    const problema = (await respuesta.json().catch(() => null)) as ErrorApi | null;
-    throw new FalloHistorial(
-      problema?.codigo ?? 'fallo',
-      problema?.mensaje ?? `El servidor respondió ${respuesta.status}.`,
-    );
-  }
-
-  return (await respuesta.json()) as T;
 }
 
 const almacenHttp: Almacen = {

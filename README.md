@@ -7,8 +7,9 @@ y ve lo que necesita.
 ```
 /                 la portada con las tarjetas
 /cotizador/       el cotizador y el historial de cotizaciones
+/cotizador/#/clientes  la libreta de clientes de la empresa
 /correo/          el envío de correo comercial por Resend
-/api/             el historial y el correo por dentro (sólo los usan esas dos)
+/api/             el historial, los clientes y el correo por dentro
 ```
 
 ---
@@ -20,6 +21,7 @@ y ve lo que necesita.
 | **Portada**           | Aquí: `index.html`               |
 | **Cotizador**         | Aquí: `cotizador/`               |
 | **Historial**         | Aquí: `worker/` + D1             |
+| **Clientes**          | Aquí: `cotizador/src/clientes/` + `worker/clientes.ts` + D1 |
 | **Correo comercial**  | Aquí: `correo/` + `worker/` + Resend |
 | **Página web**        | Fuera: `byslogistics-web`        |
 | **CRM · Chatbot**     | Fuera: su propio Worker          |
@@ -261,6 +263,84 @@ pondría una cotización de mil dólares por debajo de una de un millón de peso
 
 ---
 
+## La libreta de clientes
+
+Hasta ahora los datos de un cliente vivían **dentro** de cada cotización, y
+sólo ahí. El NIT de una empresa a la que se le cotizó cinco veces estaba
+escrito cinco veces, con cinco oportunidades de teclearlo distinto; y borrar la
+última cotización se llevaba por delante lo único que quedaba de ella. Tampoco
+había forma de responder «¿qué le hemos cotizado a éste?» sin buscar por nombre
+y confiar en que siempre se escribió igual.
+
+Ahora el cliente existe por su cuenta. Se llega desde la portada o desde el
+propio cotizador, y la pantalla se maneja igual que el historial —buscador,
+filtros, casillas, papelera, páginas— porque es la misma forma de trabajar
+sobre otra cosa.
+
+De cada uno se guarda quién es (nombre, NIT o cédula, si es empresa o persona),
+cómo se le escribe (contacto, cargo, correo, teléfono, WhatsApp, y los correos
+y teléfonos **adicionales** que se vayan sumando), dónde está, quién lo atiende
+y en qué punto está la relación: prospecto, activo o inactivo.
+
+Se puede bajar la lista a un archivo con **Exportar**, que se lleva todo lo que
+cumple el filtro puesto —no la página que se está viendo— separado por punto y
+coma y con marca de orden de bytes, que es lo que hace que Excel en español lo
+abra en columnas y no convierta «Bogotá» en «BogotÃ¡».
+
+### Borrar un cliente no borra sus cotizaciones
+
+Es la promesa que hace que esto se pueda usar sin miedo. Quitar de en medio a
+un cliente que ya no compra no puede costar el historial de lo que se le
+vendió. Y como en el historial, se borra en dos tiempos: a la papelera primero
+—reversible, con constancia de quién lo retiró— y borrado de verdad después,
+desde dentro de la papelera. El servidor lo impone por su cuenta: la operación
+de borrado definitivo sólo alcanza fichas ya retiradas, diga lo que diga quien
+la llame.
+
+### Cómo se reconoce a un cliente
+
+Cada ficha tiene su código —`CLI-0001`, `CLI-0002`…— que asigna el servidor con
+el mismo mecanismo que numera las cotizaciones. Sirve para buscar y para
+enlazar por dentro, pero **no sirve para reconocer a un cliente que llega**: en
+el momento en que llega, su código todavía no existe. Generarlo respondería
+«es nuevo» siempre, y así es como se llena una base de duplicados. El código es
+el resultado de haber reconocido al cliente, no la forma de reconocerlo.
+
+Lo que reconoce es una escalera de cuatro peldaños, en orden, y gana el primero
+que dé respuesta (`COINCIDENCIA`, en `compartido/clientes.ts`):
+
+| | Se compara | ¿Basta para unir solo? |
+| --- | --- | --- |
+| 1 | **NIT o cédula**, sólo los dígitos: `900.437.215-8` y `9004372158` son el mismo | **Sí** |
+| 2 | **Un documento parecido**: el mismo número con un dígito de más o de menos | No, pregunta |
+| 3 | **Correo** en minúsculas, incluidos los adicionales de la ficha | No, pregunta |
+| 4 | **Nombre**, sin tildes ni mayúsculas | No, pregunta |
+
+El peldaño 2 existe por un caso muy real: en Colombia el NIT se escribe de las
+dos formas, con su dígito de verificación y sin él, y quien teclea una hoy y la
+otra mañana acaba con dos fichas de la misma empresa. Pero **parecerse no es
+serlo** —una cédula de diez dígitos puede parecerse a un NIT de nueve más su
+verificación sin tener nada que ver—, así que avisa y no decide: al dar de alta
+una ficha que se parece a otra, la pantalla lo dice, no guarda nada todavía, y
+ofrece dos salidas: *abrir la que ya existe* o *guardar igual, es otro cliente*.
+
+Lo único que se rechaza de plano es el **documento idéntico**: ése no es una
+duda, es un choque, y el índice único de la base lo impide aunque el código se
+olvidara de comprobarlo. El mensaje dice de quién es el NIT y con qué código,
+para que quien lo escribió no se quede adivinando; y si esa ficha está en la
+papelera, lo dice también, porque si no se quedaría buscando en la lista a
+alguien que no sale.
+
+### Lo que todavía no hace
+
+Esta es la primera de varias entregas. Falta —y llega en las siguientes— la
+carga de clientes por lote desde un Excel con su pantalla de confirmación, que
+el cotizador pregunte «¿para qué cliente?» y complete la ficha al emitir, el
+botón de **enviar cotización** por correo, y que la ficha enseñe las
+cotizaciones y los correos de cada cliente.
+
+---
+
 ## El correo comercial
 
 La pantalla en `/correo/` deja mandar un correo con el diseño y la firma de la
@@ -379,7 +459,7 @@ resto de lo que pide la sección *Publicar* de abajo.
 
 ```bash
 npm run instalar     # dependencias del hub y del cotizador
-npm test             # 104 pruebas del cotizador
+npm test             # 144 pruebas del cotizador
 npm run build        # deja el sitio entero en publico/
 ```
 
@@ -429,8 +509,9 @@ npm run migrar:local    # y en la de pruebas, para el `npm run dev`
 
 Los dos comandos se vuelven a correr cada vez que aparece un archivo nuevo en
 `migraciones/`: aplican sólo lo que falte y no repiten lo ya aplicado. La
-`0002_papelera.sql` —las dos columnas de la papelera— y la `0003_moneda.sql`
-—la moneda, la tasa y el total en divisa— son dos de ésas.
+`0002_papelera.sql` —las dos columnas de la papelera—, la `0003_moneda.sql`
+—la moneda, la tasa y el total en divisa— y la `0004_clientes.sql` —la libreta
+de clientes y su contador de códigos— son tres de ésas.
 
 **El despliegue no lo hace.** Cada empuje a `main` publica el código solo
 —Cloudflare Workers Builds—, pero la base no se toca: Cloudflare no sabe qué
@@ -599,9 +680,9 @@ después de un `npm run build` normal no encuentra nada.
 ```
 index.html        la portada: marcado y estilos en un solo archivo, sin construir
 assets/           el logo
-cotizador/        la aplicación del cotizador (React + Vite)
+cotizador/        la aplicación del cotizador y los clientes (React + Vite)
 correo/           la pantalla de correo comercial y sus plantillas, sin construir
-worker/           la API del historial, del correo y la verificación de Access
+worker/           la API del historial, los clientes, el correo y Access
 compartido/       el contrato entre el cotizador y el Worker: qué viaja por el cable
 migraciones/      el esquema de la base, en SQL
 scripts/          arma `publico/` a partir de la portada, el correo y el cotizador

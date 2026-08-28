@@ -10,6 +10,13 @@
  * quien lo recibe decide de qué tipo es.
  */
 
+import { sinTildes, soloDigitos } from './texto';
+
+// `ErrorApi` se mudó a `api.ts` cuando dejó de ser sólo del historial: el panel
+// de clientes responde con la misma forma y necesita códigos propios. Se sigue
+// exportando desde aquí para que nada de lo que ya lo importaba se entere.
+export type { ErrorApi } from './api';
+
 /**
  * La moneda de una cotización.
  *
@@ -186,25 +193,3 @@ export function mismoCliente(a: ClienteIdentificable, b: ClienteIdentificable): 
   return sinTildes(a.empresa) === sinTildes(b.empresa);
 }
 
-function soloDigitos(valor: string): string {
-  return (valor ?? '').replace(/\D/g, '');
-}
-
-function sinTildes(valor: string): string {
-  return (valor ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
-}
-
-/**
- * Lo que el Worker devuelve cuando algo se rechaza.
- *
- * `codigo` es para la pantalla —decide qué botón ofrecer— y `mensaje` es para
- * la persona, ya redactado en español.
- */
-export interface ErrorApi {
-  codigo: 'sin-acceso' | 'numero-ocupado' | 'no-encontrada' | 'invalida' | 'fallo';
-  mensaje: string;
-}

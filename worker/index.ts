@@ -26,7 +26,6 @@ import {
   POR_PAGINA,
   type CotizacionGuardada,
   type Cuantas,
-  type ErrorApi,
   type Estado,
   type FiltroHistorial,
   type Moneda,
@@ -37,6 +36,8 @@ import {
 import { cambioDe } from '../cotizador/src/dominio/moneda';
 import { totalesDeCotizacion } from '../cotizador/src/dominio/precios';
 import type { Cotizacion } from '../cotizador/src/dominio/tipos';
+import * as clientes from './clientes';
+import { cuerpoJson, ErrorPeticion, fallo, json } from './http';
 import { identificar, SinAcceso } from './acceso';
 import { EMPRESA, MAXIMO_ADJUNTOS_BYTES, PLANTILLAS, REMITENTES, renderCorreo } from '../correo/plantillas.js';
 
@@ -77,7 +78,7 @@ export default {
         return fallo(401, 'sin-acceso', 'La sesión caducó. Recargue la página para volver a entrar.');
       }
       if (error instanceof ErrorPeticion) {
-        return fallo(error.http, error.codigo, error.message);
+        return fallo(error.http, error.codigo, error.message, error.detalle);
       }
       console.error(error);
       return fallo(500, 'fallo', 'La operación falló. Vuelva a intentarlo.');
@@ -137,7 +138,64 @@ async function enrutar(
     return json(await marcar(env.BASE, decodeURIComponent(estado[1]!), peticion, correo));
   }
 
+  const respuestaClientes = await enrutarClientes(peticion, url, env, correo, ruta, metodo);
+  if (respuestaClientes) return respuestaClientes;
+
   throw new ErrorPeticion(404, 'no-encontrada', 'Esa dirección no existe.');
+}
+
+/**
+ * Las rutas del panel de clientes.
+ *
+ * Aparte de `enrutar` para que el archivo de clientes no tenga que conocer la
+ * forma de las direcciones y este no tenga que conocer la de las fichas.
+ * Devuelve `null` cuando la ruta no es suya, y entonces el de arriba sigue
+ * hasta el 404.
+ */
+async function enrutarClientes(
+  peticion: Request,
+  url: URL,
+  env: Env,
+  correo: string,
+  ruta: string,
+  metodo: string,
+): Promise<Response | null> {
+  if (ruta === 'clientes') {
+    if (metodo === 'GET') return json(await clientes.listar(env.BASE, clientes.filtroDeUrl(url)));
+    if (metodo === 'POST') return json(await clientes.crear(env.BASE, peticion), 201);
+  }
+
+  // `coincidencia` va antes que la ruta de detalle: las dos son GET bajo
+  // `clientes/…`, y sin este orden «¿a éste ya lo tengo?» se leería como
+  // «ábreme el cliente que se llama coincidencia».
+  if (ruta === 'clientes/coincidencia' && metodo === 'GET') {
+    return json(
+      await clientes.coincidencia(env.BASE, {
+        nit: url.searchParams.get('nit') ?? '',
+        correo: url.searchParams.get('correo') ?? '',
+        empresa: url.searchParams.get('empresa') ?? '',
+      }),
+    );
+  }
+
+  if (metodo === 'POST' && ruta === 'clientes/eliminar') {
+    return json(await clientes.eliminar(env.BASE, await clientes.leerSeleccion(peticion), correo));
+  }
+  if (metodo === 'POST' && ruta === 'clientes/restaurar') {
+    return json(await clientes.restaurar(env.BASE, await clientes.leerSeleccion(peticion)));
+  }
+  if (metodo === 'POST' && ruta === 'clientes/purgar') {
+    return json(await clientes.purgar(env.BASE, await clientes.leerSeleccion(peticion)));
+  }
+
+  const detalle = /^clientes\/([^/]+)$/.exec(ruta);
+  if (detalle) {
+    const codigo = decodeURIComponent(detalle[1]!);
+    if (metodo === 'GET') return json(await clientes.abrir(env.BASE, codigo));
+    if (metodo === 'PUT') return json(await clientes.actualizar(env.BASE, codigo, peticion));
+  }
+
+  return null;
 }
 
 // --- Correo comercial -------------------------------------------------------
@@ -220,11 +278,7 @@ async function enviarCorreo(
   env: Env,
   correo: string,
 ): Promise<{ enviado: true; id: string }> {
-  const cuerpo = (await peticion.json().catch(() => null)) as PeticionCorreo | null;
-
-  if (!cuerpo || typeof cuerpo !== 'object') {
-    throw new ErrorPeticion(400, 'invalida', 'El cuerpo no es JSON válido.');
-  }
+  const cuerpo = await cuerpoJson<PeticionCorreo>(peticion);
 
   const { remitenteId, plantillaId, destinatario, asunto, datos, adjuntos, copiaAlRemitente, ctas } = cuerpo;
 
@@ -734,13 +788,7 @@ async function marcar(
  * base con el mismo `WHERE` del listado.
  */
 async function leerSeleccion(peticion: Request): Promise<Seleccion> {
-  const cuerpo = (await peticion.json().catch(() => null)) as
-    | { numeros?: unknown; todas?: unknown; filtro?: unknown }
-    | null;
-
-  if (!cuerpo || typeof cuerpo !== 'object') {
-    throw new ErrorPeticion(400, 'invalida', 'El cuerpo no es JSON válido.');
-  }
+  const cuerpo = await cuerpoJson<{ numeros?: unknown; todas?: unknown; filtro?: unknown }>(peticion);
 
   if (cuerpo.todas === true) {
     return { todas: true, filtro: filtroSeguro(cuerpo.filtro as Partial<FiltroHistorial>) };
@@ -860,32 +908,4 @@ function aResumen(fila: Record<string, unknown>): ResumenCotizacion {
     eliminadaEn: fila.eliminada_en ? String(fila.eliminada_en) : null,
     eliminadaPor: fila.eliminada_por ? String(fila.eliminada_por) : null,
   };
-}
-
-// --- Respuestas -----------------------------------------------------------
-
-class ErrorPeticion extends Error {
-  constructor(
-    readonly http: number,
-    readonly codigo: ErrorApi['codigo'],
-    mensaje: string,
-  ) {
-    super(mensaje);
-  }
-}
-
-function json(datos: unknown, estado = 200): Response {
-  return new Response(JSON.stringify(datos), {
-    status: estado,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      // El historial es de la empresa: que no lo guarde ninguna caché
-      // intermedia ni quede en el disco del portátil del asesor.
-      'Cache-Control': 'no-store',
-    },
-  });
-}
-
-function fallo(http: number, codigo: ErrorApi['codigo'], mensaje: string): Response {
-  return json({ codigo, mensaje } satisfies ErrorApi, http);
 }

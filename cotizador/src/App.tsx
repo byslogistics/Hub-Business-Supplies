@@ -1,5 +1,6 @@
 /**
- * Las dos pantallas: armar una cotización y consultar las emitidas.
+ * Las tres pantallas: armar una cotización, consultar las emitidas y la libreta
+ * de clientes.
  *
  * En la de armar, en escritorio son dos columnas a la vez: catálogo a la
  * izquierda, cotización a la derecha. En móvil no caben, y apilarlas obligaba
@@ -20,7 +21,8 @@ import { dinero } from './dominio/formato';
 import type { Moneda } from './dominio/moneda';
 import { EMPRESA } from './datos/empresa';
 import type { Cotizacion, Producto } from './dominio/tipos';
-import { almacen, ES_DEMOSTRACION, FalloHistorial } from './historial/almacen';
+import { almacen, ES_DEMOSTRACION, FalloApi } from './historial/almacen';
+import { PantallaClientes } from './clientes/PantallaClientes';
 import { PantallaHistorial } from './historial/PantallaHistorial';
 import { abrirWhatsapp, copiarMensaje, descargarPdf, verPdf } from './ui/acciones';
 import { PanelCatalogo } from './ui/PanelCatalogo';
@@ -51,7 +53,7 @@ export default function App() {
     <>
       {ES_DEMOSTRACION ? <AvisoDemostracion /> : null}
 
-      {ruta === 'historial' ? (
+      {ruta.vista === 'historial' ? (
         <PantallaHistorial
           alVolver={() => ir('cotizador')}
           alReabrir={(guardada) => {
@@ -59,8 +61,18 @@ export default function App() {
             ir('cotizador');
           }}
         />
+      ) : ruta.vista === 'clientes' ? (
+        <PantallaClientes
+          alVolver={() => ir('cotizador')}
+          codigoAbierto={ruta.codigo}
+          alAbrir={(codigo) => ir('clientes', codigo)}
+        />
       ) : (
-        <Cotizador estado={estado} alHistorial={() => ir('historial')} />
+        <Cotizador
+          estado={estado}
+          alHistorial={() => ir('historial')}
+          alClientes={() => ir('clientes')}
+        />
       )}
     </>
   );
@@ -85,9 +97,11 @@ function AvisoDemostracion() {
 function Cotizador({
   estado,
   alHistorial,
+  alClientes,
 }: {
   estado: ReturnType<typeof useCotizacion>;
   alHistorial: () => void;
+  alClientes: () => void;
 }) {
   const { cotizacion, despachar, totales, cambio, productosEnUso, revision, alertasPorLinea } =
     estado;
@@ -139,7 +153,7 @@ function Cotizador({
     } catch (error) {
       console.error(error);
       anunciar(
-        error instanceof FalloHistorial
+        error instanceof FalloApi
           ? error.mensaje
           : 'No se pudo generar el documento. Revise la consola.',
         6000,
@@ -216,8 +230,12 @@ function Cotizador({
             </p>
           </div>
 
-          {/* El historial se alcanza desde las dos anchuras: es la mitad de lo
-              que la herramienta hace ahora, no una opción escondida. */}
+          {/* El historial y los clientes se alcanzan desde las dos anchuras:
+              son la otra mitad de lo que la herramienta hace ahora, no
+              opciones escondidas. */}
+          <button type="button" className="boton-secundario" onClick={alClientes}>
+            Clientes
+          </button>
           <button type="button" className="boton-secundario" onClick={alHistorial}>
             Historial
           </button>

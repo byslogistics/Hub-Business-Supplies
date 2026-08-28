@@ -6,7 +6,7 @@
     <title>Herramientas · B&amp;S Logistics</title>
     <meta
       name="description"
-      content="Punto de entrada a las herramientas internas de Business & Supplies Logistics S.A.S.: página web, cotizador, correo comercial y CRM."
+      content="Punto de entrada a las herramientas internas de Business & Supplies Logistics S.A.S.: página web, cotizador, clientes, correo comercial y CRM."
     />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#0060a8" media="(prefers-color-scheme: light)" />
@@ -543,6 +543,11 @@
         --acento-fondo: rgb(79 70 229 / 0.1);
         --acento-borde: rgb(79 70 229 / 0.2);
       }
+      .tarjeta--ambar {
+        --acento: #a16207;
+        --acento-fondo: rgb(161 98 7 / 0.1);
+        --acento-borde: rgb(161 98 7 / 0.2);
+      }
 
       @media (prefers-color-scheme: dark) {
         .tarjeta--azul { --acento: var(--brand-300); }
@@ -552,6 +557,7 @@
         .tarjeta--rosa { --acento: #f083ab; }
         .tarjeta--turquesa { --acento: #46c8da; }
         .tarjeta--indigo { --acento: #a5b0f5; }
+        .tarjeta--ambar { --acento: #e9b44c; }
       }
 
       /* Pie -------------------------------------------------------------- */
@@ -637,9 +643,10 @@
            tarjeta se quede compacta, pero quien use lector de pantalla
            necesita saberlo igual.
 
-           El cotizador y el correo comercial son las únicas que NO abren
-           pestaña nueva: viven en este mismo repositorio y se sirven desde
-           este mismo dominio.
+           El cotizador, los clientes y el correo comercial son las únicas
+           que NO abren pestaña nueva: viven en este mismo repositorio y se
+           sirven desde este mismo dominio. La de clientes lleva a una
+           pantalla del propio cotizador (`#/clientes`), que es donde vive.
            ==================================================================== -->
       <ul class="herramientas">
         <li>
@@ -707,6 +714,48 @@
             <span class="tarjeta-texto">
               <h2>Cotizador</h2>
               <p>Arma la cotización, genera el PDF y guarda el historial.</p>
+            </span>
+            <svg
+              class="flecha"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </a>
+        </li>
+
+        <li>
+          <a class="tarjeta tarjeta--ambar" href="./cotizador/#/clientes">
+            <span class="icono" aria-hidden="true">
+              <!-- Libreta de contactos -->
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+                <path d="M3 8h2" />
+                <path d="M3 12h2" />
+                <path d="M3 16h2" />
+                <circle cx="12" cy="10" r="2" />
+                <path d="M9 16a3 3 0 0 1 6 0" />
+              </svg>
+            </span>
+            <span class="tarjeta-texto">
+              <h2>Clientes</h2>
+              <p>La libreta de la empresa: datos, contacto y quién atiende a cada uno.</p>
             </span>
             <svg
               class="flecha"

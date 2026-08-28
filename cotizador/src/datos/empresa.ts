@@ -44,6 +44,9 @@ export const EMPRESA = {
 export const ASESORES: readonly string[] = [
   'Yeimy Mahecha',
   'Paola Vargas',
+  // Atiende Panamá. Su teléfono es el que ya estaba aquí arriba como
+  // `EMPRESA.panama`: no es un dato nuevo, es el mismo con nombre.
+  'Neyla Mahecha',
   'Equipo comercial B&S Logistics',
 ];
 

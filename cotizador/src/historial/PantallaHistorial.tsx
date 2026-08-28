@@ -31,7 +31,7 @@ import {
 } from '../../../compartido/historial';
 import { dinero, fechaCorta, pesos, unidades as formatoUnidades } from '../dominio/formato';
 import type { Cotizacion } from '../dominio/tipos';
-import { almacen, FalloHistorial } from './almacen';
+import { almacen, FalloApi } from './almacen';
 import { CampoSelect, CampoTexto } from '../ui/componentes';
 import { descargarPdf } from '../ui/acciones';
 
@@ -78,7 +78,7 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
       setPagina(await almacen.listar(cual));
     } catch (error) {
       setFallo(
-        error instanceof FalloHistorial
+        error instanceof FalloApi
           ? error.mensaje
           : 'No se pudo leer el historial. Vuelva a intentarlo.',
       );
@@ -120,7 +120,7 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
       await hacer(guardada.documento);
     } catch (error) {
       setFallo(
-        error instanceof FalloHistorial
+        error instanceof FalloApi
           ? error.mensaje
           : `No se pudo abrir la cotización ${resumen.numero}.`,
       );
@@ -137,7 +137,7 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
       await cargar(filtro);
     } catch (error) {
       setFallo(
-        error instanceof FalloHistorial ? error.mensaje : 'No se pudo cambiar el estado.',
+        error instanceof FalloApi ? error.mensaje : 'No se pudo cambiar el estado.',
       );
     } finally {
       setOcupada('');
@@ -169,7 +169,7 @@ export function PantallaHistorial({ alReabrir, alVolver }: Props) {
       await cargar(filtro);
     } catch (error) {
       setFallo(
-        error instanceof FalloHistorial ? error.mensaje : 'La operación falló. Vuelva a intentarlo.',
+        error instanceof FalloApi ? error.mensaje : 'La operación falló. Vuelva a intentarlo.',
       );
     } finally {
       setTrabajando(false);

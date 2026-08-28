@@ -31,7 +31,7 @@ import {
 import { cambioDe } from '../dominio/moneda';
 import { totalesDeCotizacion } from '../dominio/precios';
 import type { Cotizacion } from '../dominio/tipos';
-import { FalloHistorial, type Almacen } from './contrato';
+import { FalloApi, type Almacen } from './contrato';
 
 const CLAVE = 'bys-cotizador:demostracion';
 const CORREO = 'demostracion@byslogistics.com.co';
@@ -51,7 +51,7 @@ function escribir(guardadas: Guardadas): void {
   try {
     localStorage.setItem(CLAVE, JSON.stringify(guardadas));
   } catch {
-    throw new FalloHistorial(
+    throw new FalloApi(
       'fallo',
       'El navegador no deja guardar más. Es una demostración: borre datos del sitio y siga.',
     );
@@ -112,7 +112,7 @@ export const almacenLocal: Almacen = {
 
   registrar: async (cotizacion) => {
     if (cotizacion.lineas.length === 0) {
-      throw new FalloHistorial('invalida', 'Una cotización sin líneas no se emite.');
+      throw new FalloApi('invalida', 'Una cotización sin líneas no se emite.');
     }
 
     const guardadas = leer();
@@ -133,7 +133,7 @@ export const almacenLocal: Almacen = {
         { empresa: cotizacion.cliente?.empresa ?? '', nit: cotizacion.cliente?.nit ?? '' },
       )
     ) {
-      throw new FalloHistorial(
+      throw new FalloApi(
         'numero-ocupado',
         `El número ${numero} ya es de una cotización${previa.cliente ? ` de ${previa.cliente}` : ''}. ` +
           'Verifique el número, o deje el campo vacío para que se asigne el siguiente.',
@@ -192,7 +192,7 @@ export const almacenLocal: Almacen = {
   abrir: async (numero) => {
     const guardada = leer()[numero];
     if (!guardada) {
-      throw new FalloHistorial('no-encontrada', `No hay ninguna cotización ${numero}.`);
+      throw new FalloApi('no-encontrada', `No hay ninguna cotización ${numero}.`);
     }
     return guardada;
   },
@@ -201,7 +201,7 @@ export const almacenLocal: Almacen = {
     const guardadas = leer();
     const guardada = guardadas[numero];
     if (!guardada) {
-      throw new FalloHistorial('no-encontrada', `No hay ninguna cotización ${numero}.`);
+      throw new FalloApi('no-encontrada', `No hay ninguna cotización ${numero}.`);
     }
 
     guardadas[numero] = {

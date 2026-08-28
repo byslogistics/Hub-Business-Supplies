@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Cotizacion } from '../dominio/tipos';
 import { almacenLocal } from './almacenLocal';
-import { FalloHistorial } from './contrato';
+import { FalloApi } from './contrato';
 
 /**
  * Las pruebas corren en Node, donde no hay `localStorage`. Este remedo basta:
@@ -81,7 +81,7 @@ describe('almacenLocal', () => {
 
   it('no emite una cotización sin líneas', async () => {
     await expect(almacenLocal.registrar(cotizacion({ lineas: [] }))).rejects.toBeInstanceOf(
-      FalloHistorial,
+      FalloApi,
     );
   });
 
@@ -229,9 +229,9 @@ describe('almacenLocal', () => {
   });
 
   it('avisa cuando se pide una cotización que no existe', async () => {
-    await expect(almacenLocal.abrir('COT-DEMO-9999')).rejects.toBeInstanceOf(FalloHistorial);
+    await expect(almacenLocal.abrir('COT-DEMO-9999')).rejects.toBeInstanceOf(FalloApi);
     await expect(almacenLocal.marcar('COT-DEMO-9999', 'perdida', '')).rejects.toBeInstanceOf(
-      FalloHistorial,
+      FalloApi,
     );
   });
 });
@@ -337,7 +337,7 @@ describe('almacenLocal · papelera', () => {
     expect(await almacenLocal.purgar({ numeros: [numero] })).toEqual({ cuantas: 1 });
 
     expect((await almacenLocal.listar({ papelera: true })).cuantas).toBe(0);
-    await expect(almacenLocal.abrir(numero)).rejects.toBeInstanceOf(FalloHistorial);
+    await expect(almacenLocal.abrir(numero)).rejects.toBeInstanceOf(FalloApi);
   });
 
   it('eliminar no alcanza lo que ya está en la papelera', async () => {

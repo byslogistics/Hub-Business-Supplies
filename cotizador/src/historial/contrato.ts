@@ -9,7 +9,6 @@
 import type {
   CotizacionGuardada,
   Cuantas,
-  ErrorApi,
   Estado,
   FiltroHistorial,
   Identidad,
@@ -54,19 +53,8 @@ export interface Almacen {
   purgar(seleccion: Seleccion): Promise<Cuantas>;
 }
 
-export type CodigoFallo = ErrorApi['codigo'] | 'sin-conexion';
-
-/**
- * Un fallo ya traducido a algo que se le puede enseñar a una persona.
- *
- * `mensaje` va en español y se pinta tal cual; `message` lo hereda de `Error`
- * con el mismo texto, para que la consola y las trazas no salgan vacías.
- */
-export class FalloHistorial extends Error {
-  constructor(
-    readonly codigo: CodigoFallo,
-    readonly mensaje: string,
-  ) {
-    super(mensaje);
-  }
-}
+// El fallo y sus códigos son de toda la API, no sólo del historial: el panel
+// de clientes rechaza con la misma forma. Se siguen exportando desde aquí para
+// que quien pedía el contrato del historial no tenga que ir a dos sitios.
+export { FalloApi } from '../api/fallo';
+export type { CodigoFallo } from '../api/fallo';
