@@ -41,7 +41,23 @@ export interface Medida {
 
 export interface Producto {
   readonly id: string;
+  /** Nombre comercial: es el que ve el cliente en la cotización y en el PDF. */
   readonly nombre: string;
+  /**
+   * Cómo se llama esta referencia en el listado de precios.
+   *
+   * El nombre que ve el cliente y el que usa la operación dejaron de ser el
+   * mismo: la dueña definió un nombre comercial por referencia
+   * («Precinto Ancla para Cajas de Seguridad Plásticas») y el listado sigue
+   * diciendo «PRECINTO ANCLA CAJAS». Guardar los dos es lo que permite que el
+   * PDF salga con el comercial y que el asesor siga encontrando el producto
+   * escribiendo lo que tiene en la lista de precios — ver el índice de
+   * búsqueda en `catalogo.ts`.
+   *
+   * Vacío cuando los dos nombres coinciden y en las referencias que todavía no
+   * tienen nombre comercial aprobado.
+   */
+  readonly referencia?: string;
   readonly categoria: string;
   readonly escalones: readonly Escalon[];
   /** Cantidad más baja con precio publicado. */
