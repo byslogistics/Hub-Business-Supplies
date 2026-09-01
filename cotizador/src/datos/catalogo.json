@@ -1350,8 +1350,7 @@
     },
     {
       "id": "precinto-guaya-ref-01-de-60-cms",
-      "nombre": "Precinto de Guaya Ref. 01 60 cm",
-      "referencia": "PRECINTO GUAYA REF. 01 DE 60 CMS",
+      "nombre": "PRECINTO GUAYA REF. 01 DE 60 CMS",
       "categoria": "Precintos de guaya",
       "escalones": [
         {
@@ -2689,7 +2688,7 @@
     },
     {
       "id": "etiqueta-opened-3-2-x-1-5-cms",
-      "nombre": "Etiqueta de Seguridad Opened 3.2 x 1.5 cm",
+      "nombre": "Etiqueta de Seguridad Opened 3.2 x 1.5 cm Personalizada",
       "referencia": "ETIQUETA OPENED 3.2 X 1.5 CMS",
       "categoria": "Etiquetas de seguridad",
       "escalones": [
@@ -2797,7 +2796,7 @@
     },
     {
       "id": "etiqueta-opened-5-0-x-2-5-cms",
-      "nombre": "Etiqueta de Seguridad Opened 5.0 x 2.5 cm",
+      "nombre": "Etiqueta de Seguridad Opened 5.0 x 2.5 cm Personalizada",
       "referencia": "ETIQUETA OPENED 5.0 X 2.5 CMS",
       "categoria": "Etiquetas de seguridad",
       "escalones": [
@@ -2867,7 +2866,7 @@
     },
     {
       "id": "etiqueta-opened-5-0-x-2-5-cms-naranja-blanca",
-      "nombre": "Etiqueta de Seguridad Opened 5.0 x 2.5 cm Naranja",
+      "nombre": "Etiqueta de Seguridad Opened 5.0 x 2.5 cm",
       "referencia": "ETIQUETA OPENED 5.0 X 2.5 CMS NARANJA - BLANCA",
       "categoria": "Etiquetas de seguridad",
       "escalones": [
@@ -4958,7 +4957,8 @@
     },
     {
       "id": "rollo-void-rojo-troquelada-15-x-5-cms",
-      "nombre": "ROLLO VOID ROJO TROQUELADA 15 X 5 CMS",
+      "nombre": "Cinta de Seguridad VOID 50 m x 5 cm",
+      "referencia": "ROLLO VOID ROJO TROQUELADA 15 X 5 CMS",
       "categoria": "Servicios de personalización",
       "escalones": [
         {
