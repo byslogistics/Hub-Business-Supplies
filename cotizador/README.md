@@ -81,6 +81,36 @@ Si el catálogo va a salir de la máquina del área comercial, use
 `npm run catalogo -- <archivo> --sin-costos` para omitir el costo de compra y
 el nombre del proveedor.
 
+### Los dos nombres de un producto
+
+El listado de precios llama a las cosas por su referencia administrativa
+(`PRECINTO ANCLA CAJAS`). La dueña las vende con otro nombre
+(«Precinto Ancla para Cajas de Seguridad Plásticas»), y ése es el que el
+cliente lee en la cotización y en el PDF. El catálogo guarda los dos:
+
+| Campo | Qué es | Dónde se ve |
+|---|---|---|
+| `nombre` | El comercial | La ficha del panel y el PDF del cliente |
+| `referencia` | El del listado de precios | Bajo el nombre en el panel, y en el buscador |
+
+La correspondencia vive en **`src/datos/nombres-comerciales.json`**, y el
+extractor la aplica al regenerar. Por eso el nombre comercial sobrevive al
+listado del año que viene en vez de volver a mayúsculas.
+
+**Cuidado al corregir un nombre en el Excel de precios.** El `id` de un
+producto sale de su referencia, así que renombrarla en el listado le cambia el
+`id`, y entonces:
+
+- el mapa de nombres comerciales deja de encontrarlo y ese producto vuelve a
+  salir en mayúsculas en la cotización del cliente;
+- las cotizaciones ya guardadas que lo incluían apuntan a un `productoId` que
+  ya no existe.
+
+Cuando haga falta hacerlo, actualice también la clave en
+`nombres-comerciales.json`. El extractor avisa al final cuántas referencias se
+quedaron sin nombre comercial, y `npm test` lo comprueba
+(`src/dominio/nombresComerciales.test.ts`).
+
 ### Qué hace el extractor con el Excel
 
 El Excel es un documento de trabajo, no una base de datos. El script normaliza:
