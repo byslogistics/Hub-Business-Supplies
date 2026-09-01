@@ -27,13 +27,24 @@ function normalizar(texto: string): string {
     .toLowerCase();
 }
 
+/*
+ * La referencia del listado de precios entra al índice junto al nombre
+ * comercial. El asesor tiene delante la lista de precios, que dice
+ * «PRECINTO ANCLA CAJAS», y el catálogo enseña «Precinto Ancla para Cajas de
+ * Seguridad Plásticas»: sin la referencia dentro, esa búsqueda devolvía cero.
+ */
 const indiceBusqueda = new Map(
-  catalogo.productos.map((p) => [p.id, normalizar(`${p.nombre} ${p.categoria}`)]),
+  catalogo.productos.map((p) => [
+    p.id,
+    normalizar(`${p.nombre} ${p.referencia ?? ''} ${p.categoria}`),
+  ]),
 );
 
 /**
  * Búsqueda por palabras sueltas y en cualquier orden: "guaya 40" encuentra
- * "PRECINTO GUAYA REF. 01 - 40 CMS". Con la consulta vacía devuelve todo.
+ * "Precinto de Guaya Ref. 01 40 cm", y "PRECINTO GUAYA REF. 01 - 40 CMS"
+ * también, porque la referencia del listado está en el índice. Con la consulta
+ * vacía devuelve todo.
  */
 export function buscarProductos(consulta: string, categoria?: string): Producto[] {
   const terminos = normalizar(consulta).split(/\s+/).filter(Boolean);

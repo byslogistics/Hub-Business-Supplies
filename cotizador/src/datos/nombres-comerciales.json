@@ -1,0 +1,451 @@
+{
+  "_comentario": [
+    "Nombre comercial de cada referencia, tal como lo definió la dueña del",
+    "negocio en DESCRIPCIONES_PRECINTOS_FINAL.xlsx.",
+    "",
+    "POR QUÉ EXISTE ESTE ARCHIVO. El listado de precios llama a las cosas por",
+    "su referencia administrativa (\"PRECINTO ANCLA CAJAS\") y el cliente las",
+    "lee en la cotización por su nombre comercial (\"Precinto Ancla para Cajas",
+    "de Seguridad Plásticas\"). scripts/extraer_catalogo.py aplica este mapa al",
+    "regenerar el catálogo, así que el nombre comercial sobrevive al listado",
+    "de precios del año que viene en vez de perderse.",
+    "",
+    "LA CLAVE ES EL id, y el id sale de la referencia del listado. Si en el",
+    "Excel de precios se RENOMBRA una referencia, su id cambia y esta entrada",
+    "deja de encontrarla: el producto vuelve a salir en mayúsculas. Cuando eso",
+    "pase, hay que actualizar la clave aquí — el extractor avisa al final de",
+    "cuántas referencias se quedaron sin nombre comercial.",
+    "",
+    "Una referencia que no esté aquí conserva el nombre del listado de precios."
+  ],
+  "productos": {
+    "absorbente-dry-bag-hook-x-2000-gramo": {
+      "nombre": "Absorbente Dry Bag Hook x 2000 gramos",
+      "referencia": "ABSORBENTE DRY BAG HOOK x 2000 gramo"
+    },
+    "absorbente-gk-gel-750-gramos": {
+      "nombre": "Absorbente GK Gel 750 gramos",
+      "referencia": "ABSORBENTE GK GEL 750 gramos"
+    },
+    "amarre-de-identificacion": {
+      "nombre": "Amarre de Identificación",
+      "referencia": "AMARRE DE IDENTIFICACION"
+    },
+    "batex-max-inflator": {
+      "nombre": "Batex Max Inflator",
+      "referencia": "BATEX MAX INFLATOR"
+    },
+    "bolsa-courier-25-x-19-cms": {
+      "nombre": "Bolsa Courier de Seguridad 25 x 19 cm",
+      "referencia": "BOLSA COURIER 25 X 19 CMS"
+    },
+    "bolsa-courier-28-x-23-cms": {
+      "nombre": "Bolsa Courier de Seguridad 28 x 23 cm",
+      "referencia": "BOLSA COURIER 28 X 23 CMS"
+    },
+    "bolsa-courier-33-x-25-cms": {
+      "nombre": "Bolsa Courier de Seguridad 33 x 25 cm",
+      "referencia": "BOLSA COURIER 33 X 25 CMS"
+    },
+    "bolsa-courier-35-x-33-cms": {
+      "nombre": "Bolsa Courier de Seguridad 35 x 33 cm",
+      "referencia": "BOLSA COURIER 35 X 33 CMS"
+    },
+    "bolsa-courier-39-x-28-cms": {
+      "nombre": "Bolsa Courier de Seguridad 39 x 28 cm",
+      "referencia": "BOLSA COURIER 39 X 28 CMS"
+    },
+    "bolsa-courier-40-x-28-cms": {
+      "nombre": "Bolsa Courier de Seguridad 40 x 28 cm",
+      "referencia": "BOLSA COURIER 40 X 28 CMS"
+    },
+    "bolsa-courier-45-x-41-cms": {
+      "nombre": "Bolsa Courier de Seguridad 45 x 41 cm",
+      "referencia": "BOLSA COURIER 45 X 41 CMS"
+    },
+    "bolsa-courier-60-x-48-cms": {
+      "nombre": "Bolsa Courier de Seguridad 60 x 48 cm",
+      "referencia": "BOLSA COURIER 60 X 48 CMS"
+    },
+    "bolsa-courier-60-x-60-cms": {
+      "nombre": "Bolsa Courier de Seguridad 60 x 60 cm",
+      "referencia": "BOLSA COURIER 60 X 60 CMS"
+    },
+    "bolsa-de-seguridad-11-x-8-5-cms": {
+      "nombre": "Bolsa de Seguridad VOID 11 x 8,5 cm",
+      "referencia": "BOLSA DE SEGURIDAD 11 X 8,5 CMS"
+    },
+    "bolsa-de-seguridad-28-x-17-cms": {
+      "nombre": "Bolsa de Seguridad VOID 28 x 17 cm",
+      "referencia": "BOLSA DE SEGURIDAD 28 X 17 CMS"
+    },
+    "bolsa-de-seguridad-34-x-25-cms": {
+      "nombre": "Bolsa de Seguridad VOID 34 x 25 cm",
+      "referencia": "BOLSA DE SEGURIDAD 34 X 25 CMS"
+    },
+    "bolsa-de-seguridad-38-x-28-cms": {
+      "nombre": "Bolsa de Seguridad VOID 38 x 28 cm",
+      "referencia": "BOLSA DE SEGURIDAD 38 X 28 CMS"
+    },
+    "bolsa-de-seguridad-52-x-40-cms": {
+      "nombre": "Bolsa de Seguridad VOID 52 x 40 cm",
+      "referencia": "BOLSA DE SEGURIDAD 52 X 40 CMS"
+    },
+    "bolsa-inflable-eco-striker-120-x-85-cms": {
+      "nombre": "Bolsa Inflable para Carga Eco Striker 120 x 85 cm",
+      "referencia": "BOLSA INFLABLE ECO STRIKER 120 X 85 CMS"
+    },
+    "bolsa-inflable-eco-striker-185-x-85-cms": {
+      "nombre": "Bolsa Inflable para Carga Eco Striker 185 x 85 cm",
+      "referencia": "BOLSA INFLABLE ECO STRIKER 185 X 85 CMS"
+    },
+    "bolsa-inflable-flex-eco-120-x-85-cms": {
+      "nombre": "Bolsa Inflable para Carga Flex Eco 120 x 85 cm",
+      "referencia": "BOLSA INFLABLE FLEX ECO 120 X 85 CMS"
+    },
+    "bolsa-inflable-flex-eco-185-x-85-cms": {
+      "nombre": "Bolsa Inflable para Carga Flex Eco 185 x 85 cm",
+      "referencia": "BOLSA INFLABLE FLEX ECO 185 X 85 CMS"
+    },
+    "bolsa-inflable-flex-eco-220-x-100-cms": {
+      "nombre": "Bolsa Inflable para Carga Flex Eco 220 x 100 cm",
+      "referencia": "BOLSA INFLABLE FLEX ECO 220 X 100 CMS"
+    },
+    "bolsa-inflable-re-use-100-x-185-cms": {
+      "nombre": "Bolsa Inflable para Carga Re-Use 100 x 185 cm",
+      "referencia": "BOLSA INFLABLE RE-USE 100 X 185 CMS"
+    },
+    "bolsa-inflable-re-use-120-x-85-cms": {
+      "nombre": "Bolsa Inflable para Carga Re-Use 120 x 85 cm",
+      "referencia": "BOLSA INFLABLE RE-USE 120 X 85 CMS"
+    },
+    "caja-de-seguridad-60-x-40-x-32": {
+      "nombre": "Caja de Seguridad Plástica 60 x 40 x 32 cm",
+      "referencia": "CAJA DE SEGURIDAD 60 X 40 X 32"
+    },
+    "caja-de-seguridad-60-x-40-x-40": {
+      "nombre": "Caja de Seguridad Plástica 60 x 40 x 40 cm",
+      "referencia": "CAJA DE SEGURIDAD 60 X 40 X 40"
+    },
+    "chapa-de-seguridad": {
+      "nombre": "Chapa de Seguridad para Medidores",
+      "referencia": "CHAPA DE SEGURIDAD"
+    },
+    "cinta-de-seguridad-50x-3-cms": {
+      "nombre": "Cinta de Seguridad VOID 50 m x 3 cm",
+      "referencia": "CINTA DE SEGURIDAD 50X 3 CMS"
+    },
+    "cinta-de-seguridad-50x-5-cms": {
+      "nombre": "Cinta de Seguridad VOID 50 m x 5 cm",
+      "referencia": "CINTA DE SEGURIDAD 50X 5 CMS"
+    },
+    "correa-de-identificacion": {
+      "nombre": "Correa de Identificación",
+      "referencia": "CORREA DE IDENTIFICACION"
+    },
+    "etiqueta-autodestructible-3-2-x-1-5-cms": {
+      "nombre": "Etiqueta de Seguridad Autodestructible 3.2 x 1.5 cm",
+      "referencia": "ETIQUETA AUTODESTRUCTIBLE 3.2 X 1.5 CMS"
+    },
+    "etiqueta-autodestructible-5-0-x-2-5-cms": {
+      "nombre": "Etiqueta de Seguridad Autodestructible 5.0 x 2.5 cm",
+      "referencia": "ETIQUETA AUTODESTRUCTIBLE 5.0 X 2.5 CMS"
+    },
+    "etiqueta-holograma-1-3-x-1-0-cms-plateado-dorado": {
+      "nombre": "Etiqueta de Seguridad Holograma 1.3 x 1.0 cm (Plateado - Dorado)",
+      "referencia": "ETIQUETA HOLOGRAMA 1.3 X 1.0 CMS (PLATEADO - DORADO)"
+    },
+    "etiqueta-holograma-2-2-x-1-5-cms-plateado-azul-turquesa-rojo-verde-violeta-dorado-azul-cielo-gris-mate": {
+      "nombre": "Etiqueta de Seguridad Holograma 2.2 x 1.5 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 2.2 X 1.5 CMS Plateado, Azul Turquesa, Rojo. Verde, Violeta, Dorado, Azul cielo, Gris mate."
+    },
+    "etiqueta-holograma-3-2-x-2-5-cms-azul-turquesa": {
+      "nombre": "Etiqueta de Seguridad Holograma 3.2 x 2.5 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 3.2 x 2.5 CMS AZUL TURQUESA"
+    },
+    "etiqueta-holograma-3-6-x-2-3-transparente": {
+      "nombre": "Etiqueta de Seguridad Holograma 3.6 x 2.3 Transparente",
+      "referencia": "ETIQUETA HOLOGRAMA 3.6 x 2.3 TRANSPARENTE"
+    },
+    "etiqueta-holograma-4-0-x-1-0-cms-plateado-dorado": {
+      "nombre": "Etiqueta de Seguridad Holograma 4.0 x 1.0 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 4.0 X 1.0 CMS Plateado - Dorado"
+    },
+    "etiqueta-holograma-4-2-x-1-8-cms-rojo": {
+      "nombre": "Etiqueta de Seguridad Holograma 4.2 x 1.8 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 4.2 x 1.8 CMS ROJO"
+    },
+    "etiqueta-holograma-4-6-x-1-7-cms-rojo": {
+      "nombre": "Etiqueta de Seguridad Holograma 4.6 x 1.7 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 4.6 x 1.7 CMS ROJO"
+    },
+    "etiqueta-holograma-4-7-x-2-2-cms-dorado-azul-cielo-plateado-azul-turquesa": {
+      "nombre": "Etiqueta de Seguridad Holograma 4.7 x 2.2 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 4.7 X 2.2 CMS Dorado, Azul cielo, plateado, azul turquesa"
+    },
+    "etiqueta-holograma-4-7-x-2-5-cms-dorado-plateado": {
+      "nombre": "Etiqueta de Seguridad Holograma 4.7 x 2.5 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 4.7 x 2.5 CMS DORADO - PLATEADO"
+    },
+    "etiqueta-holograma-5-0-x-2-0-cms-plateado-dorado-azul-turquesa": {
+      "nombre": "Etiqueta de Seguridad Holograma 5.0 x 2.0 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 5.0 x 2.0 CMS PLATEADO, DORADO, AZUL TURQUESA"
+    },
+    "etiqueta-holograma-7-x-1-cms-plateado-y-dorado": {
+      "nombre": "Etiqueta de Seguridad Holograma 7 x 1 cm",
+      "referencia": "ETIQUETA HOLOGRAMA 7 x 1 CMS PLATEADO Y DORADO"
+    },
+    "etiqueta-holograma-redonda-16-mm-plateado-dorado": {
+      "nombre": "Etiqueta de Seguridad Holograma Redonda 16 mm",
+      "referencia": "ETIQUETA HOLOGRAMA REDONDA 16 MM PLATEADO - DORADO"
+    },
+    "etiqueta-holograma-redonda-25-mm-plateado-dorado": {
+      "nombre": "Etiqueta de Seguridad Holograma Redonda 25 mm",
+      "referencia": "ETIQUETA HOLOGRAMA REDONDA 25 MM PLATEADO - DORADO"
+    },
+    "etiqueta-holograma-redonda-35-mm-plateado-dorado": {
+      "nombre": "Etiqueta de Seguridad Holograma Redonda 35 mm",
+      "referencia": "ETIQUETA HOLOGRAMA REDONDA 35 MM PLATEADO - DORADO"
+    },
+    "etiqueta-no-transfer-5-x-3-cms": {
+      "nombre": "Etiqueta de Seguridad No Transfer 5 x 3 cm",
+      "referencia": "ETIQUETA NO TRANSFER 5 X 3 CMS"
+    },
+    "etiqueta-opened-10-x-5-cms": {
+      "nombre": "Etiqueta de Seguridad Opened 10 x 5 cm",
+      "referencia": "ETIQUETA OPENED 10 X 5 CMS"
+    },
+    "etiqueta-opened-3-2-x-1-5-cms": {
+      "nombre": "Etiqueta de Seguridad Opened 3.2 x 1.5 cm Personalizada",
+      "referencia": "ETIQUETA OPENED 3.2 X 1.5 CMS"
+    },
+    "etiqueta-opened-5-0-x-1-0-cms-y-huella-verde": {
+      "nombre": "Etiqueta de Seguridad Opened 5.0 x 1.0 cm",
+      "referencia": "ETIQUETA OPENED 5.0 X 1.0 CMS y huella verde"
+    },
+    "etiqueta-opened-5-0-x-2-5-cms": {
+      "nombre": "Etiqueta de Seguridad Opened 5.0 x 2.5 cm Personalizada",
+      "referencia": "ETIQUETA OPENED 5.0 X 2.5 CMS"
+    },
+    "etiqueta-opened-5-0-x-2-5-cms-naranja-blanca": {
+      "nombre": "Etiqueta de Seguridad Opened 5.0 x 2.5 cm",
+      "referencia": "ETIQUETA OPENED 5.0 X 2.5 CMS NARANJA - BLANCA"
+    },
+    "etiqueta-opened-6-0-x-3-0-cms-verde": {
+      "nombre": "Etiqueta de Seguridad Opened 6.0 x 3.0 cm Verde",
+      "referencia": "ETIQUETA OPENED 6.0 X 3.0 CMS VERDE"
+    },
+    "etiqueta-opened-azul-claro-2-2-x-1-5-cms": {
+      "nombre": "Etiqueta de Seguridad Opened 2.2 x 1.5 cm",
+      "referencia": "ETIQUETA OPENED AZUL CLARO 2.2 X 1.5 CMS"
+    },
+    "etiqueta-void-transferencia-total-5x3-cms": {
+      "nombre": "Etiqueta de Seguridad VOID Transferencia Total 5 x 3 cm",
+      "referencia": "ETIQUETA VOID TRANSFERENCIA TOTAL 5X3 CMS"
+    },
+    "holograma-2-2-x-1-5-cms-importada": {
+      "nombre": "Holograma de seguridad 2.2 x 1.5 cm Importada",
+      "referencia": "HOLOGRAMA 2.2 X 1.5 CMS IMPORTADA"
+    },
+    "holograma-5-0-x-2-5-cms-dorada": {
+      "nombre": "Holograma de seguridad 5.0 x 2.5 cm",
+      "referencia": "HOLOGRAMA 5.0 X 2.5 CMS DORADA"
+    },
+    "infladora-quick-bolsa-re-use": {
+      "nombre": "Infladora Quick (Bolsa Re-Use)",
+      "referencia": "INFLADORA QUICK (BOLSA RE-USE)"
+    },
+    "infladora-striker-bolsa-eco-striker": {
+      "nombre": "Infladora Striker (Bolsa Eco Striker)",
+      "referencia": "INFLADORA STRIKER (BOLSA ECO STRIKER)"
+    },
+    "kit-de-seguridad": {
+      "nombre": "Kit de Seguridad para Contenedores",
+      "referencia": "KIT DE SEGURIDAD"
+    },
+    "pistola-bates-flex-bolsa-flex-eco": {
+      "nombre": "Pistola Bates Flex (Bolsa Flex Eco)",
+      "referencia": "PISTOLA BATES FLEX (BOLSA FLEX ECO)"
+    },
+    "precinto-ancla-1": {
+      "nombre": "Precinto Ancla 1",
+      "referencia": "PRECINTO ANCLA 1"
+    },
+    "precinto-ancla-cajas": {
+      "nombre": "Precinto Ancla para Cajas de Seguridad Plásticas",
+      "referencia": "PRECINTO ANCLA CAJAS"
+    },
+    "precinto-ancla-mini": {
+      "nombre": "Precinto Ancla Mini",
+      "referencia": "PRECINTO ANCLA MINI"
+    },
+    "precinto-botella-bs-02": {
+      "nombre": "Precinto Botella BS-02 ISO/PAS 17712",
+      "referencia": "PRECINTO BOTELLA BS - 02"
+    },
+    "precinto-botella-one-seal": {
+      "nombre": "Precinto Botella One Seal ISO/PAS 17712",
+      "referencia": "PRECINTO BOTELLA ONE SEAL"
+    },
+    "precinto-cable-nylon-40-cms": {
+      "nombre": "Precinto de Seguridad Cable Nylon 40 cm",
+      "referencia": "PRECINTO CABLE NYLON 40 CMS"
+    },
+    "precinto-candado": {
+      "nombre": "Precinto Candado con Alambre",
+      "referencia": "PRECINTO CANDADO"
+    },
+    "precinto-candado-cyc": {
+      "nombre": "Precinto Tipo Candado Plástico",
+      "referencia": "PRECINTO CANDADO CYC"
+    },
+    "precinto-correa-03-doble-cierre-35-cms": {
+      "nombre": "Precinto Dentado Doble Cierre 35 cm",
+      "referencia": "PRECINTO CORREA 03 DOBLE CIERRE 35 CMS"
+    },
+    "precinto-correa-dentada-mini": {
+      "nombre": "Precinto Correa Dentada 18 cm",
+      "referencia": "PRECINTO CORREA DENTADA MINI"
+    },
+    "precinto-correa-dentada-plana-30-cms": {
+      "nombre": "Precinto de Seguridad Correa Dentada Plana 30 cm",
+      "referencia": "PRECINTO CORREA DENTADA PLANA 30 CMS"
+    },
+    "precinto-correa-espiral-24-cms": {
+      "nombre": "Precinto de Correa Espiral 24 cm",
+      "referencia": "PRECINTO CORREA ESPIRAL 24 CMS"
+    },
+    "precinto-correa-espiral-33-cms": {
+      "nombre": "Precinto de Correa Espiral 33 cm",
+      "referencia": "PRECINTO CORREA ESPIRAL 33 CMS"
+    },
+    "precinto-dado-grande-tp-con-guaya-de-30-cms": {
+      "nombre": "Precinto Dado Grande con Guaya",
+      "referencia": "PRECINTO DADO GRANDE TP CON GUAYA DE 30 CMS"
+    },
+    "precinto-dado-grande-tp-con-zuncho-de-30-cms": {
+      "nombre": "Precinto Dado Grande con Zuncho",
+      "referencia": "PRECINTO DADO GRANDE TP CON ZUNCHO DE 30 CMS"
+    },
+    "precinto-dado-pequeno-tp-con-guaya-de-30-cms": {
+      "nombre": "Precinto Dado Pequeño con Guaya 30 cm",
+      "referencia": "PRECINTO DADO PEQUEÑO TP CON GUAYA DE 30 CMS"
+    },
+    "precinto-dado-pequeno-tp-con-zuncho-de-30-cms": {
+      "nombre": "Precinto Dado Pequeño con Zuncho 30 cm",
+      "referencia": "PRECINTO DADO PEQUEÑO TP CON ZUNCHO DE 30 CMS"
+    },
+    "precinto-dentado-doble-cierre-35-cms": {
+      "nombre": "Precinto Correa Dentada Doble Cierre 35 cm",
+      "referencia": "PRECINTO DENTADO DOBLE CIERRE 35 CMS"
+    },
+    "precinto-dentado-doble-cierre-39-cms": {
+      "nombre": "Precinto Dentado Doble Cierre 39 cm",
+      "referencia": "PRECINTO DENTADO DOBLE CIERRE 39 CMS"
+    },
+    "precinto-doble-dentado-38-cms": {
+      "nombre": "Precinto Correa Doble Dentado 38 cm",
+      "referencia": "PRECINTO DOBLE DENTADO 38 CMS"
+    },
+    "precinto-guaya-botella-130-cms": {
+      "nombre": "Precinto Guaya-Botella 130 cm ISO/PAS 17712",
+      "referencia": "PRECINTO GUAYA - BOTELLA 130 CMS"
+    },
+    "precinto-guaya-ref-01-120-cms": {
+      "nombre": "Precinto de Guaya Ref. 01 120 cm",
+      "referencia": "PRECINTO GUAYA REF. 01 - 120 CMS"
+    },
+    "precinto-guaya-ref-01-40-cms": {
+      "nombre": "Precinto de Guaya Ref. 01 40 cm",
+      "referencia": "PRECINTO GUAYA REF. 01 - 40 CMS"
+    },
+    "precinto-guaya-ref-02-120-cms": {
+      "nombre": "Precinto de Guaya Ref. 02 120 cm",
+      "referencia": "PRECINTO GUAYA REF. 02 - 120 CMS"
+    },
+    "precinto-guaya-ref-02-40-cms": {
+      "nombre": "Precinto de Guaya Ref. 02 40 cm",
+      "referencia": "PRECINTO GUAYA REF. 02 - 40 CMS"
+    },
+    "precinto-guaya-ref-02-60-cms": {
+      "nombre": "Precinto de Guaya Ref. 02 60 cm",
+      "referencia": "PRECINTO GUAYA REF. 02 - 60 CMS"
+    },
+    "precinto-guaya-tornillo": {
+      "nombre": "Precinto de Guaya con Tornillo",
+      "referencia": "PRECINTO GUAYA TORNILLO"
+    },
+    "precinto-metalico-cinta-bola": {
+      "nombre": "Precinto Metálico Cinta Bola",
+      "referencia": "PRECINTO METALICO CINTA BOLA"
+    },
+    "precinto-multiproposito": {
+      "nombre": "Precinto de Seguridad Multipropósito",
+      "referencia": "PRECINTO MULTIPROPOSITO"
+    },
+    "precinto-plano-36-cms": {
+      "nombre": "Precinto Correa Plana 36 cm",
+      "referencia": "PRECINTO PLANO 36 CMS"
+    },
+    "precinto-plano-42-cms": {
+      "nombre": "Precinto Correa Plana de 42 cm",
+      "referencia": "PRECINTO PLANO 42 CMS"
+    },
+    "precinto-rotor-3-guaya-30-cms": {
+      "nombre": "Precinto de Seguridad Rotor 3 Guaya 30 cm",
+      "referencia": "PRECINTO ROTOR 3 GUAYA 30 CMS"
+    },
+    "precinto-rotor-4-vp-guaya-30-cms": {
+      "nombre": "Precinto de Seguridad Rotor 4",
+      "referencia": "PRECINTO ROTOR 4 VP GUAYA 30 CMS"
+    },
+    "precinto-rotor-ref-01-guaya-20-cms": {
+      "nombre": "Precinto tipo Rotor Ref 01",
+      "referencia": "PRECINTO ROTOR REF 01 GUAYA 20 CMS"
+    },
+    "precinto-tornillo-9-guaya-30-cms": {
+      "nombre": "Precinto tipo Tornillo 9",
+      "referencia": "PRECINTO TORNILLO 9 GUAYA 30 CMS"
+    },
+    "precinto-tubular-1-24-y-38-cms": {
+      "nombre": "Precinto de Seguridad Tubular 1 24 y 38 cm",
+      "referencia": "PRECINTO TUBULAR 1 24 Y 38 CMS"
+    },
+    "precinto-tubular-2-20-cms": {
+      "nombre": "Precinto Tubular 2 20 cm",
+      "referencia": "PRECINTO TUBULAR 2 20 CMS"
+    },
+    "precinto-tubular-2-41-cms": {
+      "nombre": "Precinto Tubular 41 cm",
+      "referencia": "PRECINTO TUBULAR 2 41 CMS"
+    },
+    "precinto-tubular-2-70-cms": {
+      "nombre": "Precinto de Seguridad Tubular 2 80 cm",
+      "referencia": "PRECINTO TUBULAR 2 70 CMS"
+    },
+    "precinto-tubular-3-30-cms": {
+      "nombre": "Precinto Tubular 3 30 cm",
+      "referencia": "PRECINTO TUBULAR 3 30 CMS"
+    },
+    "precinto-tubular-3-35-cms": {
+      "nombre": "Precinto de Seguridad Tubular 3 35 cm",
+      "referencia": "PRECINTO TUBULAR 3 35 CMS"
+    },
+    "precinto-zuncho-paleta-zuncho-40-cms": {
+      "nombre": "Precinto Zuncho Paleta",
+      "referencia": "PRECINTO ZUNCHO PALETA ZUNCHO 40 CMS"
+    },
+    "protector-de-guia": {
+      "nombre": "Protector de Guía",
+      "referencia": "PROTECTOR DE GUIA"
+    },
+    "rollo-void-rojo-troquelada-15-x-5-cms": {
+      "nombre": "Cinta de Seguridad VOID 50 m x 5 cm",
+      "referencia": "ROLLO VOID ROJO TROQUELADA 15 X 5 CMS"
+    },
+    "tula-de-seguridad-30-x-40-cms-azul": {
+      "nombre": "Tula de Seguridad 30 x 40 cm",
+      "referencia": "TULA DE SEGURIDAD 30 X 40 CMS AZUL"
+    }
+  }
+}

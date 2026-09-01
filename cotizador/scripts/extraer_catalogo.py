@@ -36,6 +36,10 @@ HOJA_PRECIOS = "LISTADO PRECIOS 2026"
 HOJA_ETIQUETAS = "precios etiquetas"
 HOJA_SATELITALES = "SATELITALES"
 
+# Nombres comerciales, fuera de este script porque cambian con el catálogo
+# comercial y no con los precios. Ver la cabecera del propio archivo.
+NOMBRES_COMERCIALES = Path(__file__).resolve().parent.parent / "src/datos/nombres-comerciales.json"
+
 IVA = 0.19
 
 # Filas cuyo texto en la columna de referencia no es un producto sino un
@@ -105,6 +109,26 @@ def numero(valor) -> float | None:
 def entero(valor) -> int | None:
     n = numero(valor)
     return int(round(n)) if n is not None else None
+
+
+def cargar_nombres_comerciales() -> dict[str, dict]:
+    """El nombre con el que el cliente lee cada referencia en su cotización.
+
+    El listado de precios dice "PRECINTO ANCLA CAJAS"; la dueña vende
+    "Precinto Ancla para Cajas de Seguridad Plásticas". Los dos nombres son
+    suyos —el primero es como compra, el segundo es como vende— y el catálogo
+    guarda los dos: el comercial en `nombre`, que es lo que sale en el PDF, y
+    la referencia en `referencia`, que es como el asesor busca.
+
+    Aplicarlo AQUÍ es lo que hace que el trabajo sobreviva al listado del año
+    que viene. Sin esto, cada regeneración devolvía las 107 referencias a
+    mayúsculas y había que rehacerlo a mano.
+    """
+    if not NOMBRES_COMERCIALES.exists():
+        print(f"AVISO: no está {NOMBRES_COMERCIALES.name} — el catálogo saldrá con los nombres del listado de precios.")
+        return {}
+    datos = json.loads(NOMBRES_COMERCIALES.read_text(encoding="utf-8"))
+    return datos.get("productos", {})
 
 
 def corregir(nombre: str) -> str:
@@ -566,6 +590,7 @@ def costo_minimo(producto: Producto) -> float | None:
 def construir(ruta: Path, incluir_costos: bool = True) -> dict:
     libro = openpyxl.load_workbook(ruta, data_only=True)
     rec = Recolector()
+    comerciales = cargar_nombres_comerciales()
 
     leer_listado_precios(libro[HOJA_PRECIOS], rec)
     if HOJA_ETIQUETAS in libro.sheetnames:
@@ -581,10 +606,16 @@ def construir(ruta: Path, incluir_costos: bool = True) -> dict:
         con_logo = [e for e in escalones if e.get("logo")]
         sin_logo = [e for e in escalones if e.get("logo") is False]
 
+        # El nombre que ve el cliente sale del catálogo comercial; el listado
+        # de precios pone el id, la categoría y los escalones. Cuando no hay
+        # nombre comercial, la referencia hace las dos veces y `referencia` se
+        # omite: repetir el mismo texto en dos campos no informa de nada.
+        comercial = comerciales.get(producto.id)
         productos.append(
             {
                 "id": producto.id,
-                "nombre": producto.nombre,
+                "nombre": comercial["nombre"] if comercial else producto.nombre,
+                **({"referencia": producto.nombre} if comercial else {}),
                 "categoria": producto.categoria,
                 "escalones": escalones,
                 "minimo": min(e["desde"] for e in escalones),
@@ -665,6 +696,11 @@ def main() -> None:
     escalones = sum(len(p["escalones"]) for p in catalogo["productos"])
     print(f"{len(catalogo['productos'])} productos · {escalones} escalones")
     print(f"{len(catalogo['categorias'])} categorías: {', '.join(catalogo['categorias'])}")
+    sin_comercial = [p["nombre"] for p in catalogo["productos"] if "referencia" not in p]
+    if sin_comercial:
+        print(f"{len(sin_comercial)} referencias sin nombre comercial (salen como en el listado):")
+        for nombre in sin_comercial:
+            print(f"  · {nombre}")
     print(f"{len(catalogo['incidencias'])} incidencias registradas")
     print(f"→ {args.salida}")
 

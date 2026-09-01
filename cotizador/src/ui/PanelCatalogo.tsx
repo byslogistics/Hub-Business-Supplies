@@ -133,6 +133,16 @@ function FilaProducto({
       >
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-neutral-800">{producto.nombre}</span>
+          {/*
+            La referencia del listado de precios, debajo del nombre comercial.
+            El asesor cotiza con la lista de precios al lado, que dice
+            «PRECINTO ANCLA CAJAS», y en pantalla lee «Precinto Ancla para
+            Cajas de Seguridad Plásticas»: sin este renglón tendría que
+            adivinar que son el mismo producto.
+          */}
+          {producto.referencia ? (
+            <span className="block text-xs text-neutral-400">{producto.referencia}</span>
+          ) : null}
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-neutral-500">
               {minimo === maximo ? pesos(minimo) : `${pesos(minimo)} – ${pesos(maximo)}`}
