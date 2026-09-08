@@ -1,6 +1,6 @@
 {
-  "generadoEl": "2026-08-13",
-  "version": "fcc0ed9a03c1",
+  "generadoEl": "2026-09-08",
+  "version": "bb2b2a0b7b35",
   "origen": "LISTADO_PRECIOS_2026.xlsx",
   "iva": 0.19,
   "categorias": [
@@ -155,6 +155,11 @@
         },
         {
           "desde": 2000,
+          "unitario": 320.0,
+          "logo": true
+        },
+        {
+          "desde": 3000,
           "unitario": 300.0,
           "logo": true
         },
@@ -5096,6 +5101,11 @@
   },
   "incidencias": [
     {
+      "tipo": "cantidad_corregida",
+      "detalle": "PRECINTO CORREA 03 DOBLE CIERRE 35 CMS a 300: la hoja dice 2000 unidades y se cotiza 3000, confirmado por el área comercial",
+      "producto": "precinto-correa-03-doble-cierre-35-cms"
+    },
+    {
       "tipo": "subtotal_inconsistente",
       "detalle": "PRECINTO DOBLE DENTADO 38 CMS @3000: Excel dice 840000, unitario×cantidad da 960000",
       "producto": "precinto-doble-dentado-38-cms"
@@ -5109,11 +5119,6 @@
       "tipo": "subtotal_inconsistente",
       "detalle": "PRECINTO DOBLE DENTADO 38 CMS @10000: Excel dice 2300000, unitario×cantidad da 2600000",
       "producto": "precinto-doble-dentado-38-cms"
-    },
-    {
-      "tipo": "escalon_duplicado",
-      "detalle": "PRECINTO CORREA 03 DOBLE CIERRE 35 CMS @2000 con logo: 320 y 300; se usa 300, que es el de la fila de más abajo",
-      "producto": "precinto-correa-03-doble-cierre-35-cms"
     },
     {
       "tipo": "precio_no_monotono",

@@ -61,6 +61,23 @@ ERRATAS: list[tuple[str, str]] = [
     (r"\bSIJETADORES\b", "SUJETADORES"),
 ]
 
+# Cantidades mal capturadas que el área comercial ya confirmó por escrito.
+#
+# Va aquí por lo mismo que ERRATAS: el Excel lo mantienen las dueñas y este
+# script no lo reescribe, pero tampoco puede propagar un dato que ellas ya
+# dieron por equivocado. Cada entrada lleva quién lo confirmó y cuándo, porque
+# mover una cantidad mueve lo que se le cobra al cliente.
+#
+# (id del producto, cantidad leída, unitario) -> cantidad correcta
+CORRECCIONES_CANTIDAD: dict[tuple[str, int, float], int] = {
+    # La tabla trae "2.000" dos veces seguidas, a 320 y a 300. Yeimy, 2026-09-08:
+    # "el valor de trescientos en esa referencia es para tres mil unidades y por
+    # error en esa tabla se fue a dos mil, o sea quedaron dos veces repetidas la
+    # cantidad de dos mil". Con la corrección la escalera vuelve a ser
+    # 1.000 · 2.000 · 3.000 · 5.000 · 10.000, que es la que ellas cotizan.
+    ("precinto-correa-03-doble-cierre-35-cms", 2000, 300.0): 3000,
+}
+
 # La columna de cantidad del proveedor es polimórfica: a veces es un número,
 # a veces el empaque ("CAJA X 25 UNIDADES") y a veces el código del proveedor
 # ("REF. 685"). El empaque sí interesa: hay producto que sólo se vende por caja.
@@ -386,6 +403,19 @@ def leer_listado_precios(hoja, rec: Recolector) -> None:
                 f"unitario×cantidad da {esperado:.0f}",
                 producto=actual.id,
             )
+
+        # La corrección va después de la comprobación de arriba a propósito: esa
+        # comprobación mira si la hoja se contradice a sí misma, y para eso hace
+        # falta la cifra tal como está escrita, no la ya corregida.
+        correccion = CORRECCIONES_CANTIDAD.get((actual.id, cantidad, round(unitario, 2)))
+        if correccion is not None:
+            rec.anotar(
+                "cantidad_corregida",
+                f"{actual.nombre} a {unitario:.0f}: la hoja dice {cantidad} unidades "
+                f"y se cotiza {correccion}, confirmado por el área comercial",
+                producto=actual.id,
+            )
+            cantidad = correccion
 
         actual.escalones.append(
             Escalon(

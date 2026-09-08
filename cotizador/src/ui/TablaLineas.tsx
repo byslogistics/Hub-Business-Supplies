@@ -10,9 +10,15 @@
 import { productoPorId } from '../dominio/catalogo';
 import { dinero, pasoDe, pesos, porcentaje, unidades } from '../dominio/formato';
 import { aMoneda, EN_PESOS, type Cambio } from '../dominio/moneda';
-import { margenDeLinea, oportunidadDeVolumen, totalesDeLinea } from '../dominio/precios';
+import {
+  distingueLogo,
+  escalonesDe,
+  margenDeLinea,
+  oportunidadDeVolumen,
+  totalesDeLinea,
+} from '../dominio/precios';
 import type { Alerta } from '../dominio/revision';
-import type { Linea } from '../dominio/tipos';
+import type { Linea, Producto } from '../dominio/tipos';
 import { CampoNumero, Insignia } from './componentes';
 import type { Despachar } from './useCotizacion';
 
@@ -182,20 +188,11 @@ function FilaLinea({
             ) : null}
           </div>
 
-          <label className="flex w-fit cursor-pointer items-center gap-2 py-1.5 text-sm text-neutral-700">
-            <input
-              type="checkbox"
-              className="casilla shrink-0"
-              checked={linea.conLogo}
-              disabled={producto ? !producto.admiteLogo : false}
-              aria-label={`Marcar ${linea.descripcion} con el logo del cliente`}
-              onChange={(evento) => editar({ conLogo: evento.currentTarget.checked })}
-            />
-            Marcado con logo del cliente
-            {producto && !producto.admiteLogo ? (
-              <span className="text-xs text-neutral-400">(no disponible)</span>
-            ) : null}
-          </label>
+          <Modalidad
+            producto={producto}
+            linea={linea}
+            alElegir={(conLogo) => editar({ conLogo })}
+          />
 
           <Avisos
             linea={linea}
@@ -207,6 +204,8 @@ function FilaLinea({
             notas={producto?.notas}
             alRestaurar={() => editar({ precioManual: false })}
             alSubirVolumen={(cantidad) => editar({ cantidad })}
+            alCambiarModalidad={(conLogo) => editar({ conLogo })}
+            alFijarPrecio={(unitario) => editar({ unitario, precioManual: true })}
           />
         </div>
 
@@ -248,6 +247,97 @@ function FilaLinea({
   );
 }
 
+/**
+ * Con logo o sin logo, en dos botones.
+ *
+ * Era una casilla de «marcado con logo», y una casilla se lee como un extra
+ * del mismo producto. No lo es: el listado publica dos escaleras de precio
+ * por referencia, y la cantidad sola no basta para elegir —«PRECINTO DOBLE
+ * DENTADO 38 CMS» vale 550 en 500 unidades sin logo y 700 en 500 con logo—.
+ * Dos botones y el renglón de escalones publicados dejan a la vista que son
+ * dos cosas distintas y cuál se está cotizando, que es lo que pedían las
+ * clientas cuando dijeron que el sistema «no estaba tomando la casilla».
+ *
+ * En los productos que se venden igual marcados o no, el logo sigue siendo
+ * una nota de la línea —se imprime en el PDF— pero no mueve el precio, y aquí
+ * no se anuncia ningún escalón porque no hay dos escaleras que comparar.
+ */
+function Modalidad({
+  producto,
+  linea,
+  alElegir,
+}: {
+  producto: Producto | undefined;
+  linea: Linea;
+  alElegir: (conLogo: boolean) => void;
+}) {
+  const dosEscaleras = producto ? distingueLogo(producto) : false;
+  const escalones = producto
+    ? escalonesDe(producto, { conLogo: linea.conLogo, medida: linea.medida })
+    : [];
+
+  const opciones: { conLogo: boolean; rotulo: string; disponible: boolean }[] = [
+    {
+      conLogo: false,
+      rotulo: 'Sin marcación',
+      disponible: producto ? producto.admiteSinLogo : true,
+    },
+    {
+      conLogo: true,
+      rotulo: 'Con logo del cliente',
+      disponible: producto ? producto.admiteLogo : true,
+    },
+  ];
+
+  return (
+    <div>
+      <span className="etiqueta">Marcación</span>
+      <div
+        role="radiogroup"
+        aria-label={`Marcación de ${linea.descripcion}`}
+        className="flex flex-wrap gap-2"
+      >
+        {opciones.map(({ conLogo, rotulo, disponible }) => {
+          const elegida = linea.conLogo === conLogo;
+          return (
+            <button
+              key={rotulo}
+              type="button"
+              role="radio"
+              aria-checked={elegida}
+              // Deshabilitada, no escondida: que una referencia no se venda sin
+              // marcar es información, y esconderlo deja al asesor preguntándose
+              // por qué esta línea no tiene la opción que tenía la de arriba.
+              disabled={!disponible}
+              onClick={() => alElegir(conLogo)}
+              className={`min-h-11 rounded-lg border px-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 lg:min-h-9 ${
+                elegida
+                  ? 'border-marca-500 bg-marca-50 font-semibold text-marca-700'
+                  : 'border-neutral-200 text-neutral-600 hover:border-marca-300 hover:bg-neutral-50'
+              }`}
+            >
+              {rotulo}
+              {!disponible ? ' (no publicada)' : ''}
+            </button>
+          );
+        })}
+      </div>
+
+      {dosEscaleras ? (
+        <p className="mt-1 text-xs text-neutral-500">
+          {escalones.length
+            ? `Escalones publicados ${linea.conLogo ? 'con logo' : 'sin marcación'}: ${escalones
+                .map((e) => unidades(e.desde))
+                .join(' · ')} unidades.`
+            : `El listado no publica precios ${
+                linea.conLogo ? 'con logo' : 'sin marcación'
+              } para esta referencia.`}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function Avisos({
   linea,
   alertas,
@@ -258,6 +348,8 @@ function Avisos({
   notas,
   alRestaurar,
   alSubirVolumen,
+  alCambiarModalidad,
+  alFijarPrecio,
 }: {
   linea: Linea;
   alertas: readonly Alerta[];
@@ -268,6 +360,8 @@ function Avisos({
   notas?: readonly string[];
   alRestaurar: () => void;
   alSubirVolumen: (cantidad: number) => void;
+  alCambiarModalidad: (conLogo: boolean) => void;
+  alFijarPrecio: (unitario: number) => void;
 }) {
   const avisos: React.ReactNode[] = [];
   /** Las alertas ya vienen en la moneda del documento; sólo hay que pintarlas. */
@@ -313,8 +407,53 @@ function Avisos({
       case 'bajo-minimo':
         avisos.push(
           <span key="minimo" className="text-amber-700">
-            La cantidad está por debajo del mínimo publicado ({unidades(alerta.minimo)} unidades);
-            se aplicó el precio del escalón más bajo. Confirme con producción antes de enviar.
+            La cantidad está por debajo del mínimo publicado {alerta.conLogo ? 'con logo' : 'sin marcación'} (
+            {unidades(alerta.minimo)} unidades); se aplicó el precio del escalón más bajo. Confirme
+            con producción antes de enviar.
+          </span>,
+        );
+        break;
+
+      /*
+       * El error que reportaron las clientas, ya en pantalla.
+       *
+       * La línea se queda sin precio a propósito: la cantidad pedida no tiene
+       * precio publicado en esta marcación, y rellenarla con el escalón de más
+       * abajo es justo lo que hacía que 1.000 unidades salieran al precio de
+       * 500. Las dos salidas son decisiones distintas y las dos están aquí, a
+       * un clic, con la cifra delante.
+       */
+      case 'sin-precio-en-modalidad':
+        avisos.push(
+          <span key="modalidad" className="font-semibold text-red-700">
+            El listado no tiene precio de {unidades(linea.cantidad)} unidades{' '}
+            {alerta.conLogo ? 'con logo' : 'sin marcación'}
+            {alerta.minimo !== null && !alerta.tope
+              ? ` (esa marcación arranca en ${unidades(alerta.minimo)})`
+              : ''}
+            . Esta línea no tiene precio hasta que elija:{' '}
+            {alerta.alternativa ? (
+              <button
+                type="button"
+                className="underline"
+                onClick={() => alCambiarModalidad(alerta.alternativa!.conLogo)}
+              >
+                cotizarlas {alerta.alternativa.conLogo ? 'con logo' : 'sin marcación'} a{' '}
+                {importe(alerta.alternativa.unitario)} c/u
+              </button>
+            ) : null}
+            {alerta.alternativa && alerta.tope ? ', o ' : null}
+            {alerta.tope ? (
+              <button
+                type="button"
+                className="underline"
+                onClick={() => alFijarPrecio(alerta.tope!.unitario)}
+              >
+                sostener {importe(alerta.tope.unitario)} c/u, el escalón de{' '}
+                {unidades(alerta.tope.desde)} de esta marcación
+              </button>
+            ) : null}
+            .
           </span>,
         );
         break;

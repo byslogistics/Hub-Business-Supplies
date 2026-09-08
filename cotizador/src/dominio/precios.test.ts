@@ -68,6 +68,17 @@ describe('escalonesDe', () => {
     expect(escalonesDe(bolsa, { conLogo: true })).toHaveLength(2);
     expect(escalonesDe(bolsa, { conLogo: false })).toHaveLength(2);
   });
+
+  it('no presta los escalones de una modalidad a la otra', () => {
+    // `precinto` sólo publica precios con logo desde 1.000. Antes, pedir sin
+    // logo con una cantidad que no cabía en la tanda sin logo devolvía la
+    // tanda con logo entera, y el precio salía de la modalidad equivocada.
+    const soloConLogo: Producto = {
+      ...precinto,
+      escalones: precinto.escalones.filter((e) => e.logo === true),
+    };
+    expect(escalonesDe(soloConLogo, { conLogo: false })).toEqual([]);
+  });
 });
 
 describe('sugerirPrecio', () => {
@@ -82,10 +93,77 @@ describe('sugerirPrecio', () => {
     expect(sugerirPrecio(precinto, 2000, { conLogo: true }).unitario).toBe(350);
   });
 
-  it('avisa cuando la cantidad no llega al mínimo publicado', () => {
-    const resultado = sugerirPrecio(precinto, 250, { conLogo: true });
+  it('avisa cuando la cantidad no llega al mínimo publicado de su modalidad', () => {
+    // Con logo, `precinto` arranca en 1.000 y no hay tanda sin logo que cubra
+    // 250: no hay a qué remitir, así que se propone el escalón más bajo.
+    const soloConLogo: Producto = {
+      ...precinto,
+      escalones: precinto.escalones.filter((e) => e.logo === true),
+    };
+    const resultado = sugerirPrecio(soloConLogo, 250, { conLogo: true });
     expect(resultado.motivo).toBe('bajo-minimo');
     expect(resultado.unitario).toBe(400);
+    // El mínimo que se informa es el de la modalidad, no el del producto.
+    expect(resultado.minimo).toBe(1000);
+  });
+
+  it('no cotiza 250 con logo al precio de 1.000 cuando sin logo sí hay escalón', () => {
+    // 250 unidades con logo valdrían 400 —el precio de mil— y sin logo 900.
+    // Cobrar 400 por 250 personalizadas es regalar el pedido: se para y se
+    // enseña lo que sí existe.
+    const resultado = sugerirPrecio(precinto, 250, { conLogo: true });
+    expect(resultado.motivo).toBe('otra-modalidad');
+    expect(resultado.unitario).toBe(0);
+    expect(resultado.minimo).toBe(1000);
+    expect(resultado.alternativa).toMatchObject({
+      conLogo: false,
+      escalon: { desde: 100, unitario: 900 },
+    });
+  });
+
+  /*
+   * El error que reportaron Paola y Yeimy, en su forma mínima.
+   *
+   * «Que me cotice mil me pone automáticamente el precio de quinientas
+   * unidades que dice quinientos cincuenta, donde dice que no lleva logo.»
+   * La escalera sin logo se acaba en 500; la de con logo sigue en 1.000. Antes
+   * se devolvía 550 sin decir nada.
+   */
+  it('no arrastra el último escalón sin logo a una cantidad que sólo existe con logo', () => {
+    const resultado = sugerirPrecio(precinto, 1000, { conLogo: false });
+
+    expect(resultado.unitario).not.toBe(550);
+    expect(resultado.motivo).toBe('otra-modalidad');
+    expect(resultado.unitario).toBe(0);
+    // Las dos salidas que se le ofrecen al asesor.
+    expect(resultado.alternativa).toMatchObject({
+      conLogo: true,
+      escalon: { desde: 1000, unitario: 400 },
+    });
+    expect(resultado.topeDeLaModalidad).toMatchObject({ desde: 500, unitario: 550 });
+  });
+
+  it('deja sin precio la modalidad que el producto no publica', () => {
+    const soloConLogo: Producto = {
+      ...precinto,
+      escalones: precinto.escalones.filter((e) => e.logo === true),
+      admiteSinLogo: false,
+    };
+    const resultado = sugerirPrecio(soloConLogo, 2000, { conLogo: false });
+
+    expect(resultado.motivo).toBe('modalidad-no-publicada');
+    expect(resultado.unitario).toBe(0);
+    expect(resultado.alternativa).toMatchObject({ conLogo: true, escalon: { desde: 2000 } });
+  });
+
+  it('el producto que no distingue logo no propone alternativa ninguna', () => {
+    // Las bolsas se venden igual marcadas o no: no hay dos escaleras, y
+    // ofrecer «cámbiese a la otra modalidad» sería inventar una.
+    expect(sugerirPrecio(bolsa, 1000, { conLogo: true })).toMatchObject({
+      unitario: 600,
+      motivo: 'escalon',
+      alternativa: null,
+    });
   });
 
   it('no rompe con un producto sin escalones', () => {
