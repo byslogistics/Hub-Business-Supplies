@@ -60,7 +60,7 @@ describe('revisarLinea', () => {
 
   it('avisa de la cantidad por debajo del mínimo', () => {
     const alertas = revisarLinea(linea({ cantidad: 500 }), producto);
-    expect(alertas).toContainEqual({ tipo: 'bajo-minimo', minimo: 1000 });
+    expect(alertas).toContainEqual({ tipo: 'bajo-minimo', minimo: 1000, conLogo: true });
   });
 
   it('no confunde decimales con un cambio de precio', () => {
@@ -85,7 +85,21 @@ describe('esGrave', () => {
 
   it('no bloquean las decisiones del asesor', () => {
     expect(esGrave({ tipo: 'precio-manual', sugerido: 400 })).toBe(false);
-    expect(esGrave({ tipo: 'bajo-minimo', minimo: 1000 })).toBe(false);
+    expect(esGrave({ tipo: 'bajo-minimo', minimo: 1000, conLogo: true })).toBe(false);
+  });
+
+  it('bloquea la línea que se quedó sin precio publicado', () => {
+    // Sin precio no hay oferta: la línea vale cero hasta que alguien elija
+    // entre las dos marcaciones.
+    expect(
+      esGrave({
+        tipo: 'sin-precio-en-modalidad',
+        conLogo: false,
+        minimo: 100,
+        alternativa: { conLogo: true, desde: 1000, unitario: 400 },
+        tope: { desde: 500, unitario: 550 },
+      }),
+    ).toBe(true);
   });
 });
 

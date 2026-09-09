@@ -23,8 +23,31 @@ export type Alerta =
   | { readonly tipo: 'precio-desactualizado'; readonly guardado: number; readonly vigente: number }
   /** El asesor escribió el precio a mano; se recuerda cuál sugiere el listado. */
   | { readonly tipo: 'precio-manual'; readonly sugerido: number }
-  /** La cantidad no llega al mínimo publicado. */
-  | { readonly tipo: 'bajo-minimo'; readonly minimo: number };
+  /** La cantidad no llega al mínimo publicado de la modalidad elegida. */
+  | { readonly tipo: 'bajo-minimo'; readonly minimo: number; readonly conLogo: boolean }
+  /**
+   * El listado no publica precio para esta cantidad **en esta modalidad**.
+   *
+   * Es el aviso del error que reportaron las clientas: pedir 1.000 unidades
+   * sin logo de una referencia que sin logo llega hasta 500. Antes se cobraban
+   * a 550 sin decir nada; ahora la línea se queda sin precio y aquí van las
+   * dos salidas que tiene el asesor —cambiar de modalidad, o cotizar a mano el
+   * escalón más alto de ésta— con las cifras ya en la moneda del documento.
+   */
+  | {
+      readonly tipo: 'sin-precio-en-modalidad';
+      readonly conLogo: boolean;
+      /** Mínimo publicado en la modalidad elegida, si tiene precios. */
+      readonly minimo: number | null;
+      /** Lo que sí cubre la cantidad en la otra modalidad. */
+      readonly alternativa: {
+        readonly conLogo: boolean;
+        readonly desde: number;
+        readonly unitario: number;
+      } | null;
+      /** Escalón más alto alcanzado en la modalidad elegida, si lo hay. */
+      readonly tope: { readonly desde: number; readonly unitario: number } | null;
+    };
 
 /**
  * Una alerta que merece la franja de aviso al principio del formulario.
@@ -36,7 +59,12 @@ export type Alerta =
  * puede es tomarla sin enterarse.
  */
 export function esGrave(alerta: Alerta): boolean {
-  return alerta.tipo === 'referencia-desconocida' || alerta.tipo === 'precio-desactualizado';
+  return (
+    alerta.tipo === 'referencia-desconocida' ||
+    alerta.tipo === 'precio-desactualizado' ||
+    // Sin precio no hay oferta: la línea vale 0 hasta que alguien elija.
+    alerta.tipo === 'sin-precio-en-modalidad'
+  );
 }
 
 /**
@@ -63,16 +91,51 @@ export function revisarLinea(
     medida: linea.medida,
   });
 
-  if (sugerido.motivo === 'bajo-minimo') {
-    alertas.push({ tipo: 'bajo-minimo', minimo: producto.minimo });
-  }
-
   // Las cifras que llevan las alertas van en la moneda del documento: se
   // pintan al lado del precio de la línea, y un aviso que compara dólares con
   // pesos no avisa de nada.
-  const unitarioSugerido = aMoneda(sugerido.unitario, cambio);
+  const enDocumento = (valorEnPesos: number) => aMoneda(valorEnPesos, cambio);
+
+  if (sugerido.motivo === 'bajo-minimo') {
+    // El mínimo que se anuncia es el de la modalidad elegida, no el del
+    // producto: una referencia que arranca en 100 sin logo puede arrancar en
+    // 1.000 con logo, y decir «mínimo 100» al pedir 100 con logo no avisa nada.
+    alertas.push({
+      tipo: 'bajo-minimo',
+      minimo: sugerido.minimo ?? producto.minimo,
+      conLogo: linea.conLogo,
+    });
+  }
+
+  if (sugerido.motivo === 'otra-modalidad' || sugerido.motivo === 'modalidad-no-publicada') {
+    alertas.push({
+      tipo: 'sin-precio-en-modalidad',
+      conLogo: linea.conLogo,
+      minimo: sugerido.minimo,
+      alternativa: sugerido.alternativa
+        ? {
+            conLogo: sugerido.alternativa.conLogo,
+            desde: sugerido.alternativa.escalon.desde,
+            unitario: enDocumento(sugerido.alternativa.escalon.unitario),
+          }
+        : null,
+      tope: sugerido.topeDeLaModalidad
+        ? {
+            desde: sugerido.topeDeLaModalidad.desde,
+            unitario: enDocumento(sugerido.topeDeLaModalidad.unitario),
+          }
+        : null,
+    });
+  }
+
+  // Comparar contra el listado sólo tiene sentido cuando el listado propuso
+  // algo. Sin precio propuesto, el «vigente» sería 0 y el aviso diría que la
+  // referencia bajó a cero.
+  const tienePrecioSugerido =
+    sugerido.motivo === 'escalon' || sugerido.motivo === 'bajo-minimo';
+  const unitarioSugerido = enDocumento(sugerido.unitario);
   const difiere = Math.abs(unitarioSugerido - linea.unitario) > toleranciaDe(cambio.moneda);
-  if (difiere && sugerido.motivo !== 'sin-precio') {
+  if (difiere && tienePrecioSugerido) {
     // `precioManual` es lo que separa las dos causas de una misma diferencia:
     // o la escribió el asesor, o el listado cambió por debajo. Antes las dos
     // se anunciaban como «precio editado a mano», que en el segundo caso es
